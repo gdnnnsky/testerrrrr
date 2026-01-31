@@ -1,4 +1,4 @@
---// Dj Hub (Reeeeeeeeeeeeeeeeeeeeeeemastered UI Version)
+--// Dj Hub (Resadafdsfsfgdmastered UI Version)
 --// Mobile Friendly & Minimalist Design
 
 local Players = game:GetService("Players")
@@ -463,8 +463,8 @@ local function playNotifSoundAndText(rarity)
 	StarterGui:SetCore("SendNotification", {
 		Title = rarity .. " BRAINROT!",
 		Text = "TEXT (" .. rarity .. " BRAINROT MUNCUL!)",
-		Duration = 5,
-		Icon = "rbxassetid://6023426915"
+		Duration = 10,
+		Icon = "rbxassetid://8486683243"
 	})
 end
 
