@@ -452,7 +452,7 @@ local function playNotifSoundAndText(rarity)
 	-- Play Sound
 	local sound = Instance.new("Sound")
 	sound.SoundId = "rbxassetid://8486683243"
-	sound.Volume = 8
+	sound.Volume = 7
 	sound.Parent = SoundService
 	sound:Play()
 	
@@ -463,7 +463,7 @@ local function playNotifSoundAndText(rarity)
 	StarterGui:SetCore("SendNotification", {
 		Title = rarity .. " BRAINROT!",
 		Text = "TEXT (" .. rarity .. " BRAINROT MUNCUL!)",
-		Duration = 10,
+		Duration = 7,
 		Icon = "rbxassetid://8486683243"
 	})
 end
