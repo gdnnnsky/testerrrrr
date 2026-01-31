@@ -1,12 +1,12 @@
---// Dj Hub (Remastered UI Version)
+--// Dj Hub (Reeeeeeeeeeeeeeeeeeeeeeemastered UI Version)
 --// Mobile Friendly & Minimalist Design
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local StarterGui = game:GetService("StarterGui") -- Added for Notifications
-local SoundService = game:GetService("SoundService") -- Added for Sound
+local StarterGui = game:GetService("StarterGui")
+local SoundService = game:GetService("SoundService")
 
 local lp = Players.LocalPlayer
 
@@ -324,18 +324,24 @@ local ESP = { enabled = {}, connections = {}, markers = {} }
 local fastTakeEnabled = false
 local ftConnection = nil
 
--- Variables Notif Logic (FEATURE BARU)
+-- Variables Notif Logic
 local notifConfig = {
 	Divine = false,
-	Celestial = false
+	Celestial = false,
+	Common = false
 }
 local notifListeners = {}
 
--- 1. Helper Logic Functions
+-- 1. Helper Logic Functions (UPDATED FOR TIMER & NAME ESP)
 local function removeMarker(obj)
 	local data = ESP.markers[obj]
 	if data then
-		pcall(function() data.hl:Destroy() data.bb:Destroy() data.ac:Disconnect() end)
+		pcall(function() 
+			data.hl:Destroy() 
+			data.bb:Destroy() 
+			data.ac:Disconnect()
+			if data.tc then data.tc:Disconnect() end -- Disconnect timer listener
+		end)
 		ESP.markers[obj] = nil
 	end
 end
@@ -344,25 +350,79 @@ local function addMarker(obj, label)
 	if not obj:IsA("Model") or obj.Name ~= "RenderedBrainrot" then return end
 	local root = obj:FindFirstChild("Root") or obj:FindFirstChildWhichIsA("BasePart", true)
 	if not root or ESP.markers[obj] then return end
+	
+	-- 1. Tentukan Warna dan Format RichText
+	local highlightColor = Color3.fromRGB(255, 255, 255)
+	local nameColorHex = ""
+	
+	if label == "Divine" then
+		highlightColor = Color3.fromRGB(255, 215, 0) -- KUNING
+		nameColorHex = "rgb(255,215,0)"
+	elseif label == "Celestial" then
+		highlightColor = Color3.fromRGB(255, 105, 180) -- PINK
+		nameColorHex = "rgb(255,105,180)"
+	else -- Common
+		highlightColor = Color3.fromRGB(0, 255, 0) -- HIJAU
+		nameColorHex = "rgb(0,255,0)"
+	end
 
+	-- 2. Cari Nama Asli Brainrot (Model di dalam RenderedBrainrot)
+	local realName = "Unknown"
+	for _, child in pairs(obj:GetChildren()) do
+		-- Asumsi nama brainrot adalah Model selain Root
+		if child:IsA("Model") and child.Name ~= "RenderedBrainrot" then
+			realName = child.Name
+			break
+		end
+	end
+
+	-- 3. Setup Visual ESP
 	local hl = Instance.new("Highlight", obj)
-	hl.FillColor = (label == "Divine" and Color3.fromRGB(255,215,0)) or (label == "Celestial" and Color3.fromRGB(0,255,255)) or Color3.fromRGB(200,200,200)
+	hl.FillColor = highlightColor
+	hl.OutlineColor = Color3.fromRGB(255, 255, 255)
 
 	local bb = Instance.new("BillboardGui", obj)
 	bb.Adornee = root
 	bb.Size = UDim2.new(0, 200, 0, 50)
 	bb.AlwaysOnTop = true
-	bb.StudsOffset = Vector3.new(0, 3, 0)
+	bb.StudsOffset = Vector3.new(0, 4, 0) -- Di naikkan dikit biar jelas
 	
 	local txt = Instance.new("TextLabel", bb)
 	txt.Size = UDim2.new(1,0,1,0)
 	txt.BackgroundTransparency = 1
-	txt.TextColor3 = Color3.new(1,1,1)
 	txt.TextStrokeTransparency = 0
 	txt.Font = Enum.Font.GothamBold
-	txt.Text = label .. " Brainrot"
+	txt.RichText = true -- Enable RichText untuk warna-warni
+	txt.TextSize = 13
+	
+	-- 4. Cari Timer Label (Path sesuai gambar: Root -> TimerGui -> TimeLeft -> TimeLeft)
+	local timerLabel = nil
+	pcall(function()
+		timerLabel = obj.Root.TimerGui.TimeLeft.TimeLeft
+	end)
 
-	ESP.markers[obj] = { hl = hl, bb = bb, ac = obj.AncestryChanged:Connect(function() if not obj.Parent then removeMarker(obj) end end) }
+	-- Fungsi update text agar realtime
+	local function updateEspText()
+		local timeLeftStr = timerLabel and timerLabel.Text or "0s"
+		-- Format: Nama (Warna Rarity) + Spasi + Timer (Warna Merah)
+		txt.Text = string.format('<font color="%s">%s</font> <font color="rgb(255,0,0)">(%s)</font>', nameColorHex, realName, timeLeftStr)
+	end
+	
+	-- Initial update
+	updateEspText()
+
+	-- Listener perubahan text timer
+	local timerConnection = nil
+	if timerLabel then
+		timerConnection = timerLabel:GetPropertyChangedSignal("Text"):Connect(updateEspText)
+	end
+
+	ESP.markers[obj] = { 
+		hl = hl, 
+		bb = bb, 
+		ac = obj.AncestryChanged:Connect(function() if not obj.Parent then removeMarker(obj) end end),
+		tc = timerConnection -- Simpan koneksi timer untuk dicopot nanti
+	}
 end
 
 local function toggleEspLogic(mode, folderName)
@@ -389,30 +449,29 @@ end
 
 -- FUNCTION NOTIF BARU (SOUND & TEXT)
 local function playNotifSoundAndText(rarity)
-	-- Play Sound (Generic Notification Sound)
+	-- Play Sound
 	local sound = Instance.new("Sound")
-	sound.SoundId = "rbxassetid://4590657391" -- Suara 'Ting' jelas
-	sound.Volume = 6
+	sound.SoundId = "rbxassetid://4590657391"
+	sound.Volume = 2
 	sound.Parent = SoundService
 	sound:Play()
 	
-	-- Cleanup sound after playing
+	-- Cleanup sound
 	game:GetService("Debris"):AddItem(sound, 3)
 
-	-- Show Notification Text
+	-- Show Notification
 	StarterGui:SetCore("SendNotification", {
 		Title = rarity .. " BRAINROT!",
 		Text = "TEXT (" .. rarity .. " BRAINROT MUNCUL!)",
 		Duration = 5,
-		Icon = "rbxassetid://6023426915" -- Icon seru (optional)
+		Icon = "rbxassetid://6023426915"
 	})
 end
 
 -- SETUP LISTENER UNTUK NOTIF
 local function setupNotifListener(category)
-	if notifListeners[category] then return end -- Sudah ada listener
+	if notifListeners[category] then return end
 	
-	-- Tunggu folder aman
 	local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
 	if not activeFolder then return end
 	
@@ -426,14 +485,14 @@ local function setupNotifListener(category)
 	end
 end
 
--- Initialize Listeners immediately (agar ready pas di toggle)
+-- Initialize Listeners
 task.spawn(function()
 	if not workspace:FindFirstChild("ActiveBrainrots") then
 		workspace.ChildAdded:Wait()
 	end
 	setupNotifListener("Divine")
 	setupNotifListener("Celestial")
-    setupNotifListener("Common")
+	setupNotifListener("Common")
 end)
 
 --=============================================================================
@@ -488,11 +547,10 @@ CreateToggle("Noclip", function()
 	end
 end)
 
-CreateSection("NOTIFICATIONS (BRAINROT)") -- BAGIAN UI BARU
+CreateSection("NOTIFICATIONS (BRAINROT)")
 
 CreateToggle("Notif DEVINE Brainrot", function()
 	notifConfig["Divine"] = not notifConfig["Divine"]
-	-- Listener sudah auto setup di background, tinggal ubah config true/false
 end)
 
 CreateToggle("Notif CELESTIAL Brainrot", function()
