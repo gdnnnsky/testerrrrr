@@ -1,4 +1,4 @@
---// Dj Hub (Resadafdsfsfgdmastered UI Version)
+--// Dj Hub (Rorrrrrrrrrrrrrrrrrrrrrgdmastered UI Version)
 --// Mobile Friendly & Minimalist Design
 
 local Players = game:GetService("Players")
@@ -451,8 +451,8 @@ end
 local function playNotifSoundAndText(rarity)
 	-- Play Sound
 	local sound = Instance.new("Sound")
-	sound.SoundId = "rbxassetid://4590657391"
-	sound.Volume = 2
+	sound.SoundId = "rbxassetid://8486683243"
+	sound.Volume = 8
 	sound.Parent = SoundService
 	sound:Play()
 	
