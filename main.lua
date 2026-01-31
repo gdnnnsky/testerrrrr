@@ -392,7 +392,7 @@ local function playNotifSoundAndText(rarity)
 	-- Play Sound (Generic Notification Sound)
 	local sound = Instance.new("Sound")
 	sound.SoundId = "rbxassetid://4590657391" -- Suara 'Ting' jelas
-	sound.Volume = 2
+	sound.Volume = 6
 	sound.Parent = SoundService
 	sound:Play()
 	
