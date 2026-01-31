@@ -433,6 +433,7 @@ task.spawn(function()
 	end
 	setupNotifListener("Divine")
 	setupNotifListener("Celestial")
+    setupNotifListener("Common")
 end)
 
 --=============================================================================
@@ -496,6 +497,10 @@ end)
 
 CreateToggle("Notif CELESTIAL Brainrot", function()
 	notifConfig["Celestial"] = not notifConfig["Celestial"]
+end)
+
+CreateToggle("Notif COMMON Brainrot", function()
+	notifConfig["Common"] = not notifConfig["Common"]
 end)
 
 
