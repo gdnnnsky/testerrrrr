@@ -1,4 +1,4 @@
---// Dj Hub (Rorrrrrrrrrrrrrrrrrrrrrgdmastered UI Version)
+--// Dj Hub (Remastered UI Version)
 --// Mobile Friendly & Minimalist Design
 
 local Players = game:GetService("Players")
@@ -324,6 +324,10 @@ local ESP = { enabled = {}, connections = {}, markers = {} }
 local fastTakeEnabled = false
 local ftConnection = nil
 
+-- Penambahan Variabel Logic untuk Auto Collect Arcade Event
+local autoConsoleEnabled = false
+local autoTicketEnabled = false
+
 -- Variables Notif Logic
 local notifConfig = {
 	Divine = false,
@@ -567,6 +571,65 @@ CreateSection("VISUALS (ESP)")
 CreateToggle("ESP Divine", function() toggleEspLogic("Divine", "Divine") end)
 CreateToggle("ESP Celestial", function() toggleEspLogic("Celestial", "Celestial") end)
 CreateToggle("ESP Common", function() toggleEspLogic("Common", "Common") end)
+
+-- Penambahan UI Section untuk Arcade Event
+CreateSection("ARCADE EVENT")
+
+CreateToggle("Auto Game Console", function()
+	autoConsoleEnabled = not autoConsoleEnabled
+	if autoConsoleEnabled then
+		task.spawn(function()
+			while autoConsoleEnabled do
+				task.wait(0.2)
+				local folder = workspace:FindFirstChild("ArcadeEventConsoles")
+				if folder and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+					local hrp = lp.Character.HumanoidRootPart
+					for _, model in pairs(folder:GetChildren()) do
+						if model.Name == "Game Console" then
+							local part = model:FindFirstChild("Game Console")
+							if part and part:FindFirstChild("TouchInterest") then
+								if firetouchinterest then
+									firetouchinterest(hrp, part, 0)
+									firetouchinterest(hrp, part, 1)
+								else
+									part.CFrame = hrp.CFrame
+								end
+							end
+						end
+					end
+				end
+			end
+		end)
+	end
+end)
+
+CreateToggle("Auto Tickets", function()
+	autoTicketEnabled = not autoTicketEnabled
+	if autoTicketEnabled then
+		task.spawn(function()
+			while autoTicketEnabled do
+				task.wait(0.2)
+				local folder = workspace:FindFirstChild("ArcadeEventTickets")
+				if folder and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+					local hrp = lp.Character.HumanoidRootPart
+					for _, model in pairs(folder:GetChildren()) do
+						if model.Name == "Ticket" then
+							local part = model:FindFirstChild("Ticket")
+							if part and part:FindFirstChild("TouchInterest") then
+								if firetouchinterest then
+									firetouchinterest(hrp, part, 0)
+									firetouchinterest(hrp, part, 1)
+								else
+									part.CFrame = hrp.CFrame
+								end
+							end
+						end
+					end
+				end
+			end
+		end)
+	end
+end)
 
 CreateSection("MISC")
 
