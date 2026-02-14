@@ -1,5 +1,5 @@
---// Dj Hub (Super Fast Follow Version)
---//wwwwwwwwwwwwwwwwwwwwwwwwwUpdated: Uses RenderStepped for Zero Delay
+--// Dj Hub (Ultimate Version)
+--// wdsadasdsadadsadaaFeatures: Realtime Follow + Auto Equip + Arcade ESP + Brainrot ESP
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -91,8 +91,8 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 450, 0, 380) -- Diperpanjang sedikit
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -190)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.15 
 MainFrame.BorderSizePixel = 0
@@ -313,6 +313,9 @@ local notifListeners = {}
 local followTarget = nil
 local followConnection = nil
 
+-- Variables for AUTO EQUIP
+local autoEquipEnabled = false
+
 --=============================================================================
 --// LOGIC FUNCTIONS
 --=============================================================================
@@ -463,7 +466,7 @@ local function toggleItemEsp(mode, folderName)
 	end
 end
 
--- 2. Follow Player Logic (REALTIME UPDATE)
+-- 2. Follow Player Logic (REALTIME)
 local TargetLabel -- Forward declaration
 
 local function StopFollowing()
@@ -482,26 +485,20 @@ local function StartFollowing(targetPlayer)
 	followTarget = targetPlayer
 	if TargetLabel then TargetLabel.Text = "Following: " .. targetPlayer.Name end
 	
-	-- MENGGUNAKAN RENDERSTEPPED UNTUK ZERO DELAY
 	followConnection = RunService.RenderStepped:Connect(function()
 		if followTarget and followTarget.Character and followTarget.Character:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 			
 			local tRoot = followTarget.Character.HumanoidRootPart
 			local myRoot = lp.Character.HumanoidRootPart
 			
-			-- Disable collision agar tidak mental
 			for _, part in pairs(lp.Character:GetDescendants()) do
 				if part:IsA("BasePart") then part.CanCollide = false end
 			end
 			
-			-- POSISI: Kunci CFrame ke target
 			myRoot.CFrame = tRoot.CFrame * CFrame.new(4, 0, 0)
-			
-			-- RESET PHYSICS (PENTING AGAR TIDAK JITTER/DELAY)
 			myRoot.AssemblyLinearVelocity = Vector3.zero
 			myRoot.AssemblyAngularVelocity = Vector3.zero
 		else
-			-- If target leaves or dies, stop
 			if not followTarget or not followTarget.Parent then
 				StopFollowing()
 			end
@@ -509,7 +506,38 @@ local function StartFollowing(targetPlayer)
 	end)
 end
 
--- 3. Misc Functions
+-- 3. Auto Equip Logic
+task.spawn(function()
+	while true do
+		task.wait(0.2) -- Cek setiap 0.2 detik agar responsif saat item berubah
+		if autoEquipEnabled and lp.Character and lp.Backpack then
+			local humanoid = lp.Character:FindFirstChild("Humanoid")
+			if humanoid then
+				local currentTool = lp.Character:FindFirstChildOfClass("Tool")
+				local currentName = currentTool and currentTool.Name or ""
+				
+				-- Logic: Jika yang dipegang BUKAN Divine, cek apakah punya Divine di tas?
+				if currentName ~= "Divine Block" then
+					local divineInBag = lp.Backpack:FindFirstChild("Divine Block")
+					if divineInBag then
+						humanoid:EquipTool(divineInBag)
+					else
+						-- Jika tidak punya Divine, cek apakah yang dipegang BUKAN Celestial?
+						-- Jika ya, cek apakah punya Celestial di tas?
+						if currentName ~= "Celestial Block" then
+							local celestialInBag = lp.Backpack:FindFirstChild("Celestial Block")
+							if celestialInBag then
+								humanoid:EquipTool(celestialInBag)
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end)
+
+-- 4. Misc Functions
 local function applyFastTake(prompt)
 	if prompt:IsA("ProximityPrompt") and prompt.Name == "TakePrompt" then
 		prompt.HoldDuration = 0
@@ -599,7 +627,12 @@ CreateToggle("Noclip", function()
 	end
 end)
 
---/// PLAYER FOLLOWER SECTION ///
+CreateSection("AUTO ITEMS")
+
+CreateToggle("Auto Equip Best Block", function()
+	autoEquipEnabled = not autoEquipEnabled
+end)
+
 CreateSection("PLAYER FOLLOWER")
 
 TargetLabel = Instance.new("TextLabel")
@@ -744,4 +777,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Realtime) Loaded")
+print("✅ Dj Hub Remastered (AutoEquip Added) Loaded")
