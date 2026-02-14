@@ -1,6 +1,5 @@
---// Dj Hub (Remastered UI Version)
---// Mobile Friendly & Minimalist Design
---// FIXED & CLEANED VERSION
+--// Dj Hub (Super Fast Follow Version)
+--//wwwwwwwwwwwwwwwwwwwwwwwwwUpdated: Uses RenderStepped for Zero Delay
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -12,12 +11,12 @@ local SoundService = game:GetService("SoundService")
 local lp = Players.LocalPlayer
 
 --=============================================================================
---// GUI LIBRARY & SETUP (UI VISUALS)
+--// GUI LIBRARY & SETUP
 --=============================================================================
 
 local colors = {
 	background = Color3.fromRGB(15, 15, 15),
-	accent = Color3.fromRGB(255, 120, 30), -- Warna Orange mirip Lynx
+	accent = Color3.fromRGB(255, 120, 30),
 	text = Color3.fromRGB(240, 240, 240),
 	subText = Color3.fromRGB(150, 150, 150),
 	toggleOn = Color3.fromRGB(255, 120, 30),
@@ -36,10 +35,7 @@ local function pickGuiParent()
 end
 
 local parent = pickGuiParent()
-if not parent then 
-    warn("DJ HUB: Cannot find GUI Parent")
-    return 
-end
+if not parent then return end
 
 -- Cleanup Old GUI
 pcall(function()
@@ -95,7 +91,7 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 350) -- Sedikit lebih panjang
+MainFrame.Size = UDim2.new(0, 450, 0, 350)
 MainFrame.Position = UDim2.new(0.5, -225, 0.5, -175)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.15 
@@ -467,7 +463,7 @@ local function toggleItemEsp(mode, folderName)
 	end
 end
 
--- 2. Follow Player Logic
+-- 2. Follow Player Logic (REALTIME UPDATE)
 local TargetLabel -- Forward declaration
 
 local function StopFollowing()
@@ -486,20 +482,24 @@ local function StartFollowing(targetPlayer)
 	followTarget = targetPlayer
 	if TargetLabel then TargetLabel.Text = "Following: " .. targetPlayer.Name end
 	
-	followConnection = RunService.Stepped:Connect(function()
+	-- MENGGUNAKAN RENDERSTEPPED UNTUK ZERO DELAY
+	followConnection = RunService.RenderStepped:Connect(function()
 		if followTarget and followTarget.Character and followTarget.Character:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 			
 			local tRoot = followTarget.Character.HumanoidRootPart
 			local myRoot = lp.Character.HumanoidRootPart
 			
-			-- Disable collision to prevent fling
+			-- Disable collision agar tidak mental
 			for _, part in pairs(lp.Character:GetDescendants()) do
 				if part:IsA("BasePart") then part.CanCollide = false end
 			end
 			
-			-- Position: Right side of target (4 studs)
+			-- POSISI: Kunci CFrame ke target
 			myRoot.CFrame = tRoot.CFrame * CFrame.new(4, 0, 0)
-			myRoot.Velocity = Vector3.zero
+			
+			-- RESET PHYSICS (PENTING AGAR TIDAK JITTER/DELAY)
+			myRoot.AssemblyLinearVelocity = Vector3.zero
+			myRoot.AssemblyAngularVelocity = Vector3.zero
 		else
 			-- If target leaves or dies, stop
 			if not followTarget or not followTarget.Parent then
@@ -744,4 +744,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered Loaded")
+print("✅ Dj Hub Remastered (Realtime) Loaded")
