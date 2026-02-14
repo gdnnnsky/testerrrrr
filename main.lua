@@ -1,5 +1,5 @@
---// Dj Hub (Ultimate Version)
---// wdsadasdsadadsadaaFeatures: Realtime Follow + Auto Equip + Arcade ESP + Brainrot ESP
+--// Dj Hub (Ultimate Fixed - Auto Equip GUID Support)
+--// rtrrtrtr Features: Realtime Follow + Smart Auto Equip (Mutation Support) + Arcade ESP
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -91,7 +91,7 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 380) -- Diperpanjang sedikit
+MainFrame.Size = UDim2.new(0, 450, 0, 380)
 MainFrame.Position = UDim2.new(0.5, -225, 0.5, -190)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.15 
@@ -320,7 +320,29 @@ local autoEquipEnabled = false
 --// LOGIC FUNCTIONS
 --=============================================================================
 
--- 1. ESP & Visuals
+-- 1. Helper Logic: Check Item Name (Handles GUID & Mutations)
+local function isTargetItem(tool, keyword)
+	if not tool:IsA("Tool") then return false end
+	
+	-- Prioritas 1: Cek ToolTip (Biasanya nama asli ada disini, e.g "Blood Divine Block")
+	if tool.ToolTip and string.find(tool.ToolTip, keyword) then 
+		return true 
+	end
+	
+	-- Prioritas 2: Cek Nama biasa (Just in case game rename tools local)
+	if string.find(tool.Name, keyword) then 
+		return true 
+	end
+	
+	-- Optional: Jika ada Custom Attribute
+	if tool:GetAttribute("DisplayName") and string.find(tool:GetAttribute("DisplayName"), keyword) then
+		return true
+	end
+	
+	return false
+end
+
+-- 2. ESP & Visuals
 local function removeMarker(obj)
 	local data = ESP.markers[obj]
 	if data then
@@ -466,7 +488,7 @@ local function toggleItemEsp(mode, folderName)
 	end
 end
 
--- 2. Follow Player Logic (REALTIME)
+-- 3. Follow Player Logic (REALTIME)
 local TargetLabel -- Forward declaration
 
 local function StopFollowing()
@@ -506,26 +528,46 @@ local function StartFollowing(targetPlayer)
 	end)
 end
 
--- 3. Auto Equip Logic
+-- 4. Auto Equip Logic (UPDATED: GUID & Mutation Support)
 task.spawn(function()
 	while true do
-		task.wait(0.2) -- Cek setiap 0.2 detik agar responsif saat item berubah
+		task.wait(0.2) 
 		if autoEquipEnabled and lp.Character and lp.Backpack then
 			local humanoid = lp.Character:FindFirstChild("Humanoid")
 			if humanoid then
 				local currentTool = lp.Character:FindFirstChildOfClass("Tool")
-				local currentName = currentTool and currentTool.Name or ""
 				
-				-- Logic: Jika yang dipegang BUKAN Divine, cek apakah punya Divine di tas?
-				if currentName ~= "Divine Block" then
-					local divineInBag = lp.Backpack:FindFirstChild("Divine Block")
+				-- Cek status item yang sedang dipegang
+				local holdingDivine = currentTool and isTargetItem(currentTool, "Divine Block")
+				local holdingCelestial = currentTool and isTargetItem(currentTool, "Celestial Block")
+				
+				-- LOGIC UTAMA:
+				-- Jika TIDAK sedang memegang Divine Block, kita cari di tas.
+				if not holdingDivine then
+					
+					-- Cari Divine di Backpack (Loop karena nama file random UUID)
+					local divineInBag = nil
+					for _, item in pairs(lp.Backpack:GetChildren()) do
+						if isTargetItem(item, "Divine Block") then
+							divineInBag = item
+							break
+						end
+					end
+					
 					if divineInBag then
 						humanoid:EquipTool(divineInBag)
 					else
-						-- Jika tidak punya Divine, cek apakah yang dipegang BUKAN Celestial?
-						-- Jika ya, cek apakah punya Celestial di tas?
-						if currentName ~= "Celestial Block" then
-							local celestialInBag = lp.Backpack:FindFirstChild("Celestial Block")
+						-- Jika Divine gak ada, cek apakah sedang megang Celestial?
+						-- Jika TIDAK, cari Celestial di tas.
+						if not holdingCelestial then
+							local celestialInBag = nil
+							for _, item in pairs(lp.Backpack:GetChildren()) do
+								if isTargetItem(item, "Celestial Block") then
+									celestialInBag = item
+									break
+								end
+							end
+							
 							if celestialInBag then
 								humanoid:EquipTool(celestialInBag)
 							end
@@ -537,7 +579,7 @@ task.spawn(function()
 	end
 end)
 
--- 4. Misc Functions
+-- 5. Misc Functions
 local function applyFastTake(prompt)
 	if prompt:IsA("ProximityPrompt") and prompt.Name == "TakePrompt" then
 		prompt.HoldDuration = 0
@@ -777,4 +819,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (AutoEquip Added) Loaded")
+print("✅ Dj Hub Remastered (GUID Fixed) Loaded")
