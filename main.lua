@@ -1,5 +1,6 @@
 --// Dj Hub (Remastered UI Version)
 --// Mobile Friendly & Minimalist Design
+--// FIXED & CLEANED VERSION
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -14,7 +15,6 @@ local lp = Players.LocalPlayer
 --// GUI LIBRARY & SETUP (UI VISUALS)
 --=============================================================================
 
-local Library = {}
 local colors = {
 	background = Color3.fromRGB(15, 15, 15),
 	accent = Color3.fromRGB(255, 120, 30), -- Warna Orange mirip Lynx
@@ -36,7 +36,10 @@ local function pickGuiParent()
 end
 
 local parent = pickGuiParent()
-if not parent then return end
+if not parent then 
+    warn("DJ HUB: Cannot find GUI Parent")
+    return 
+end
 
 -- Cleanup Old GUI
 pcall(function()
@@ -51,7 +54,7 @@ ScreenGui.Name = "DjHubRemastered"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parent
 
--- 3. Dragging Function (Mobile Support)
+-- 3. Dragging Function
 local function makeDraggable(frame, handle)
 	handle = handle or frame
 	local dragging, dragInput, dragStart, startPos
@@ -92,16 +95,15 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 320)
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -160)
+MainFrame.Size = UDim2.new(0, 450, 0, 350) -- Sedikit lebih panjang
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -175)
 MainFrame.BackgroundColor3 = colors.background
-MainFrame.BackgroundTransparency = 0.15 -- Transparan dikit
+MainFrame.BackgroundTransparency = 0.15 
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
--- Side Accent Line (Style Lynx)
 local AccentLine = Instance.new("Frame")
 AccentLine.Size = UDim2.new(0, 4, 1, 0)
 AccentLine.BackgroundColor3 = colors.accent
@@ -109,7 +111,6 @@ AccentLine.BorderSizePixel = 0
 AccentLine.Parent = MainFrame
 Instance.new("UICorner", AccentLine).CornerRadius = UDim.new(0, 8)
 
--- Header
 local Header = Instance.new("Frame")
 Header.Size = UDim2.new(1, -20, 0, 40)
 Header.Position = UDim2.new(0, 20, 0, 0)
@@ -128,7 +129,6 @@ Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
 Title.Parent = Header
 
--- Buttons (Close & Min)
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Text = "×"
 CloseBtn.Font = Enum.Font.GothamMedium
@@ -149,7 +149,6 @@ MinBtn.Size = UDim2.new(0, 40, 1, 0)
 MinBtn.Position = UDim2.new(1, -80, 0, 0)
 MinBtn.Parent = Header
 
--- Content Container
 local Container = Instance.new("ScrollingFrame")
 Container.Size = UDim2.new(1, -24, 1, -50)
 Container.Position = UDim2.new(0, 14, 0, 45)
@@ -165,10 +164,9 @@ UIList.Parent = Container
 UIList.Padding = UDim.new(0, 6)
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
 
--- Apply Drag
 makeDraggable(MainFrame, Header)
 
--- 5. Component Functions (Toggle & Button)
+-- 5. Component Functions
 
 local function CreateToggle(text, callback)
 	local ToggleFrame = Instance.new("Frame")
@@ -211,19 +209,12 @@ local function CreateToggle(text, callback)
 	
 	Trigger.MouseButton1Click:Connect(function()
 		toggled = not toggled
-		
-		-- Animation
 		local targetColor = toggled and colors.toggleOn or colors.toggleOff
 		local targetPos = toggled and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
-		
 		TweenService:Create(SwitchBg, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
 		TweenService:Create(Circle, TweenInfo.new(0.2), {Position = targetPos}):Play()
-		
-		-- Logic Callback
 		pcall(callback)
 	end)
-	
-	return Trigger -- Return trigger if needed
 end
 
 local function CreateButton(text, callback)
@@ -244,14 +235,12 @@ local function CreateButton(text, callback)
 	Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
 	
 	Btn.MouseButton1Click:Connect(function()
-		-- Click Effect
 		TweenService:Create(Btn, TweenInfo.new(0.1), {BackgroundColor3 = colors.accent}):Play()
 		task.delay(0.1, function()
 			TweenService:Create(Btn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
 		end)
 		pcall(callback)
 	end)
-    return Btn
 end
 
 local function CreateSection(text)
@@ -268,12 +257,9 @@ local function CreateSection(text)
 	Sec.Parent = Container
 end
 
--- 6. Minimize Logic (Kotak Kecil)
+-- 6. Minimize Logic
 local minimized = false
-local restoreSize = MainFrame.Size
 local restorePos = MainFrame.Position
-
--- Icon untuk mode minimize
 local MinIcon = Instance.new("TextButton")
 MinIcon.Name = "MiniIcon"
 MinIcon.Size = UDim2.new(0, 50, 0, 50)
@@ -290,22 +276,21 @@ Instance.new("UIStroke", MinIcon).Color = colors.accent
 Instance.new("UIStroke", MinIcon).Thickness = 2
 Instance.new("UIStroke", MinIcon).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
--- Buat icon bisa didrag juga
 makeDraggable(MinIcon)
 
 MinBtn.MouseButton1Click:Connect(function()
 	minimized = true
-	restorePos = MainFrame.Position -- Save posisi terakhir
+	restorePos = MainFrame.Position
 	MainFrame.Visible = false
 	MinIcon.Visible = true
-	MinIcon.Position = restorePos -- Muncul di posisi GUI terakhir
+	MinIcon.Position = restorePos
 end)
 
 MinIcon.MouseButton1Click:Connect(function()
 	minimized = false
 	MinIcon.Visible = false
 	MainFrame.Visible = true
-	MainFrame.Position = MinIcon.Position -- Restore di posisi icon terakhir
+	MainFrame.Position = MinIcon.Position
 end)
 
 CloseBtn.MouseButton1Click:Connect(function()
@@ -313,10 +298,9 @@ CloseBtn.MouseButton1Click:Connect(function()
 end)
 
 --=============================================================================
---// FEATURE LOGIC INTEGRATION (Logic Asli + Feature Baru)
+--// FEATURE VARIABLES
 --=============================================================================
 
--- Variables Logic
 local platformEnabled = false
 local pPart, pConn, lastY = nil, nil, 0
 local noclipOn = false
@@ -324,69 +308,60 @@ local noclipConn = nil
 local ESP = { enabled = {}, connections = {}, markers = {} }
 local fastTakeEnabled = false
 local ftConnection = nil
-
--- Penambahan Variabel Logic untuk Auto Collect Arcade Event
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
+local notifConfig = { Divine = false, Celestial = false, Common = false }
+local notifListeners = {}
 
--- Penambahan Variabel Logic untuk Follow Player
+-- Variables for FOLLOW PLAYER
 local followTarget = nil
 local followConnection = nil
 
--- Variables Notif Logic
-local notifConfig = {
-	Divine = false,
-	Celestial = false,
-	Common = false
-}
-local notifListeners = {}
+--=============================================================================
+--// LOGIC FUNCTIONS
+--=============================================================================
 
--- 1. Helper Logic Functions (UPDATED FOR TIMER & NAME ESP)
+-- 1. ESP & Visuals
 local function removeMarker(obj)
 	local data = ESP.markers[obj]
 	if data then
-		pcall(function() 
-			data.hl:Destroy() 
-			data.bb:Destroy() 
+		pcall(function() 
+			data.hl:Destroy() 
+			data.bb:Destroy() 
 			data.ac:Disconnect()
-			if data.tc then data.tc:Disconnect() end -- Disconnect timer listener
+			if data.tc then data.tc:Disconnect() end
 		end)
 		ESP.markers[obj] = nil
 	end
 end
 
--- [EXISTING] Logic Marker untuk Brainrot (Complex)
 local function addMarker(obj, label)
 	if not obj:IsA("Model") or obj.Name ~= "RenderedBrainrot" then return end
 	local root = obj:FindFirstChild("Root") or obj:FindFirstChildWhichIsA("BasePart", true)
 	if not root or ESP.markers[obj] then return end
 	
-	-- 1. Tentukan Warna dan Format RichText
 	local highlightColor = Color3.fromRGB(255, 255, 255)
 	local nameColorHex = ""
 	
 	if label == "Divine" then
-		highlightColor = Color3.fromRGB(255, 215, 0) -- KUNING
+		highlightColor = Color3.fromRGB(255, 215, 0)
 		nameColorHex = "rgb(255,215,0)"
 	elseif label == "Celestial" then
-		highlightColor = Color3.fromRGB(255, 105, 180) -- PINK
+		highlightColor = Color3.fromRGB(255, 105, 180)
 		nameColorHex = "rgb(255,105,180)"
-	else -- Common
-		highlightColor = Color3.fromRGB(0, 255, 0) -- HIJAU
+	else
+		highlightColor = Color3.fromRGB(0, 255, 0)
 		nameColorHex = "rgb(0,255,0)"
 	end
 
-	-- 2. Cari Nama Asli Brainrot (Model di dalam RenderedBrainrot)
 	local realName = "Unknown"
 	for _, child in pairs(obj:GetChildren()) do
-		-- Asumsi nama brainrot adalah Model selain Root
 		if child:IsA("Model") and child.Name ~= "RenderedBrainrot" then
 			realName = child.Name
 			break
 		end
 	end
 
-	-- 3. Setup Visual ESP
 	local hl = Instance.new("Highlight", obj)
 	hl.FillColor = highlightColor
 	hl.OutlineColor = Color3.fromRGB(255, 255, 255)
@@ -395,72 +370,52 @@ local function addMarker(obj, label)
 	bb.Adornee = root
 	bb.Size = UDim2.new(0, 200, 0, 50)
 	bb.AlwaysOnTop = true
-	bb.StudsOffset = Vector3.new(0, 4, 0) -- Di naikkan dikit biar jelas
+	bb.StudsOffset = Vector3.new(0, 4, 0)
 	
 	local txt = Instance.new("TextLabel", bb)
 	txt.Size = UDim2.new(1,0,1,0)
 	txt.BackgroundTransparency = 1
 	txt.TextStrokeTransparency = 0
 	txt.Font = Enum.Font.GothamBold
-	txt.RichText = true -- Enable RichText untuk warna-warni
+	txt.RichText = true
 	txt.TextSize = 13
 	
-	-- 4. Cari Timer Label (Path sesuai gambar: Root -> TimerGui -> TimeLeft -> TimeLeft)
 	local timerLabel = nil
-	pcall(function()
-		timerLabel = obj.Root.TimerGui.TimeLeft.TimeLeft
-	end)
+	pcall(function() timerLabel = obj.Root.TimerGui.TimeLeft.TimeLeft end)
 
-	-- Fungsi update text agar realtime
 	local function updateEspText()
 		local timeLeftStr = timerLabel and timerLabel.Text or "0s"
-		-- Format: Nama (Warna Rarity) + Spasi + Timer (Warna Merah)
 		txt.Text = string.format('<font color="%s">%s</font> <font color="rgb(255,0,0)">(%s)</font>', nameColorHex, realName, timeLeftStr)
 	end
 	
-	-- Initial update
 	updateEspText()
 
-	-- Listener perubahan text timer
 	local timerConnection = nil
 	if timerLabel then
 		timerConnection = timerLabel:GetPropertyChangedSignal("Text"):Connect(updateEspText)
 	end
 
-	ESP.markers[obj] = { 
-		hl = hl, 
-		bb = bb, 
+	ESP.markers[obj] = { 
+		hl = hl, 
+		bb = bb, 
 		ac = obj.AncestryChanged:Connect(function() if not obj.Parent then removeMarker(obj) end end),
-		tc = timerConnection -- Simpan koneksi timer untuk dicopot nanti
+		tc = timerConnection
 	}
 end
 
--- [NEW] Logic Marker untuk Arcade Items (Ticket/Console)
 local function addItemMarker(obj, type)
 	if ESP.markers[obj] then return end
-	
 	local root = obj:FindFirstChildWhichIsA("BasePart")
 	if not root then return end
 	
-	-- Config warna
-	local color = Color3.fromRGB(255, 255, 255)
-	local labelText = "Item"
+	local color = (type == "Ticket") and Color3.fromRGB(0, 255, 255) or Color3.fromRGB(170, 0, 255)
+	local labelText = (type == "Ticket") and "🎟 Ticket" or "🎮 Console"
 	
-	if type == "Ticket" then
-		color = Color3.fromRGB(0, 255, 255) -- Cyan
-		labelText = "🎟 Ticket"
-	elseif type == "Console" then
-		color = Color3.fromRGB(170, 0, 255) -- Purple
-		labelText = "🎮 Console"
-	end
-	
-	-- Highlight
 	local hl = Instance.new("Highlight", obj)
 	hl.FillColor = color
 	hl.OutlineColor = Color3.fromRGB(255, 255, 255)
 	hl.FillTransparency = 0.5
 	
-	-- Text
 	local bb = Instance.new("BillboardGui", obj)
 	bb.Adornee = root
 	bb.Size = UDim2.new(0, 200, 0, 50)
@@ -486,10 +441,9 @@ end
 local function toggleEspLogic(mode, folderName)
 	ESP.enabled[mode] = not ESP.enabled[mode]
 	local isOn = ESP.enabled[mode]
-
 	if ESP.connections[mode] then ESP.connections[mode]:Disconnect() end
-	local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild(folderName)
 	
+	local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild(folderName)
 	if isOn and folder then
 		for _, v in pairs(folder:GetChildren()) do addMarker(v, mode) end
 		ESP.connections[mode] = folder.ChildAdded:Connect(function(c) addMarker(c, mode) end)
@@ -498,26 +452,64 @@ local function toggleEspLogic(mode, folderName)
 	end
 end
 
--- [NEW] Toggle Logic untuk Item Arcade
 local function toggleItemEsp(mode, folderName)
 	ESP.enabled[mode] = not ESP.enabled[mode]
 	local isOn = ESP.enabled[mode]
-	
 	if ESP.connections[mode] then ESP.connections[mode]:Disconnect() end
-	
 	local folder = workspace:FindFirstChild(folderName)
-	
 	if isOn and folder then
 		for _, v in pairs(folder:GetChildren()) do addItemMarker(v, mode) end
 		ESP.connections[mode] = folder.ChildAdded:Connect(function(c) addItemMarker(c, mode) end)
 	else
-		-- Reuse removeMarker karena dia membersihkan berdasarkan key table
-		for obj, _ in pairs(ESP.markers) do 
-			if obj:IsDescendantOf(folder) then removeMarker(obj) end 
+		for obj, _ in pairs(ESP.markers) do 
+			if obj:IsDescendantOf(folder) then removeMarker(obj) end 
 		end
 	end
 end
 
+-- 2. Follow Player Logic
+local TargetLabel -- Forward declaration
+
+local function StopFollowing()
+	if followConnection then
+		followConnection:Disconnect()
+		followConnection = nil
+	end
+	followTarget = nil
+	if TargetLabel then TargetLabel.Text = "Target: None" end
+end
+
+local function StartFollowing(targetPlayer)
+	StopFollowing() -- Clean old connection
+	if not targetPlayer then return end
+	
+	followTarget = targetPlayer
+	if TargetLabel then TargetLabel.Text = "Following: " .. targetPlayer.Name end
+	
+	followConnection = RunService.Stepped:Connect(function()
+		if followTarget and followTarget.Character and followTarget.Character:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+			
+			local tRoot = followTarget.Character.HumanoidRootPart
+			local myRoot = lp.Character.HumanoidRootPart
+			
+			-- Disable collision to prevent fling
+			for _, part in pairs(lp.Character:GetDescendants()) do
+				if part:IsA("BasePart") then part.CanCollide = false end
+			end
+			
+			-- Position: Right side of target (4 studs)
+			myRoot.CFrame = tRoot.CFrame * CFrame.new(4, 0, 0)
+			myRoot.Velocity = Vector3.zero
+		else
+			-- If target leaves or dies, stop
+			if not followTarget or not followTarget.Parent then
+				StopFollowing()
+			end
+		end
+	end)
+end
+
+-- 3. Misc Functions
 local function applyFastTake(prompt)
 	if prompt:IsA("ProximityPrompt") and prompt.Name == "TakePrompt" then
 		prompt.HoldDuration = 0
@@ -525,56 +517,42 @@ local function applyFastTake(prompt)
 	end
 end
 
--- FUNCTION NOTIF BARU (SOUND & TEXT)
 local function playNotifSoundAndText(rarity)
-	-- Play Sound
 	local sound = Instance.new("Sound")
 	sound.SoundId = "rbxassetid://8486683243"
 	sound.Volume = 7
 	sound.Parent = SoundService
 	sound:Play()
-	
-	-- Cleanup sound
 	game:GetService("Debris"):AddItem(sound, 3)
-
-	-- Show Notification
+	
 	StarterGui:SetCore("SendNotification", {
 		Title = rarity .. " BRAINROT!",
 		Text = "TEXT (" .. rarity .. " BRAINROT MUNCUL!)",
-		Duration = 7,
-		Icon = "rbxassetid://8486683243"
+		Duration = 7
 	})
 end
 
--- SETUP LISTENER UNTUK NOTIF
 local function setupNotifListener(category)
 	if notifListeners[category] then return end
-	
 	local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
 	if not activeFolder then return end
-	
 	local targetFolder = activeFolder:FindFirstChild(category)
 	if targetFolder then
 		notifListeners[category] = targetFolder.ChildAdded:Connect(function(child)
-			if notifConfig[category] then
-				playNotifSoundAndText(category:upper())
-			end
+			if notifConfig[category] then playNotifSoundAndText(category:upper()) end
 		end)
 	end
 end
 
--- Initialize Listeners
 task.spawn(function()
-	if not workspace:FindFirstChild("ActiveBrainrots") then
-		workspace.ChildAdded:Wait()
-	end
+	if not workspace:FindFirstChild("ActiveBrainrots") then workspace.ChildAdded:Wait() end
 	setupNotifListener("Divine")
 	setupNotifListener("Celestial")
 	setupNotifListener("Common")
 end)
 
 --=============================================================================
---// UI ELEMENT CREATION (MAPPING LOGIC KE UI)
+--// UI BUILD (SECTIONS & BUTTONS)
 --=============================================================================
 
 CreateSection("PLAYER")
@@ -589,18 +567,14 @@ CreateToggle("Platform Walk", function()
 		pPart.Transparency = 0.5
 		pPart.Material = Enum.Material.ForceField
 		pPart.Color = Color3.fromRGB(0, 255, 255)
-
 		if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 			lastY = lp.Character.HumanoidRootPart.Position.Y - 3.2
 		end
-
 		pConn = RunService.PostSimulation:Connect(function()
 			if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 				local hrp = lp.Character.HumanoidRootPart
 				local hum = lp.Character:FindFirstChild("Humanoid")
-				if hum and hum.FloorMaterial == Enum.Material.Air then
-					lastY = hrp.Position.Y - 3.2
-				end
+				if hum and hum.FloorMaterial == Enum.Material.Air then lastY = hrp.Position.Y - 3.2 end
 				pPart.CFrame = CFrame.new(hrp.Position.X, lastY, hrp.Position.Z)
 			end
 		end)
@@ -625,9 +599,10 @@ CreateToggle("Noclip", function()
 	end
 end)
 
+--/// PLAYER FOLLOWER SECTION ///
 CreateSection("PLAYER FOLLOWER")
 
-local TargetLabel = Instance.new("TextLabel")
+TargetLabel = Instance.new("TextLabel")
 TargetLabel.Text = "Target: None"
 TargetLabel.Size = UDim2.new(1, 0, 0, 20)
 TargetLabel.BackgroundTransparency = 1
@@ -636,108 +611,23 @@ TargetLabel.Font = Enum.Font.GothamSemibold
 TargetLabel.TextSize = 13
 TargetLabel.Parent = Container
 
--- Folder untuk menampung tombol player agar mudah di refresh
-local PlayerListFolder = Instance.new("Folder", Container)
-PlayerListFolder.Name = "PlayerListFolder"
-
-local function StopFollowing()
-	if followConnection then
-		followConnection:Disconnect()
-		followConnection = nil
-	end
-	followTarget = nil
-	TargetLabel.Text = "Target: None"
-end
-
-local function StartFollowing(targetPlayer)
-	StopFollowing() -- Reset previous
-	if not targetPlayer then return end
-	
-	followTarget = targetPlayer
-	TargetLabel.Text = "Following: " .. targetPlayer.Name
-	
-	-- Gunakan Stepped agar gerakan smooth dan nempel sebelum physics dihitung
-	followConnection = RunService.Stepped:Connect(function()
-		if followTarget and followTarget.Character and followTarget.Character:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-			
-			local tRoot = followTarget.Character.HumanoidRootPart
-			local myRoot = lp.Character.HumanoidRootPart
-			
-			-- Matikan collision player kita agar tidak tabrakan (flinging)
-			for _, part in pairs(lp.Character:GetDescendants()) do
-				if part:IsA("BasePart") then part.CanCollide = false end
-			end
-			
-			-- Posisi di sebelah kanan (CFrame * offset x)
-			-- X+ adalah kanan relatif terhadap rotasi player
-			myRoot.CFrame = tRoot.CFrame * CFrame.new(4, 0, 0)
-			myRoot.Velocity = Vector3.zero -- Reset velocity agar tidak jatuh/mental
-		else
-			StopFollowing()
-		end
-	end)
-end
-
 CreateButton("Stop Following", function()
 	StopFollowing()
 end)
 
 CreateButton("Refresh Player List", function()
-	-- Hapus tombol lama
-	for _, child in pairs(PlayerListFolder:GetChildren()) do
-		child:Destroy()
-	end
-	
-	-- Buat tombol baru untuk setiap player selain kita
-	for _, player in pairs(Players:GetPlayers()) do
-		if player ~= lp then
-			-- Kita buat tombol manual karena kita ingin masukkannya ke dalam PlayerListFolder, bukan Container utama langsung
-			-- Tapi karena UIListLayout ada di Container, item dalam folder tidak akan terurut otomatis.
-			-- Solusi: Kita pakai CreateButton modifikasi atau insert manual ke Container lalu beri tag untuk dihapus.
-			-- Agar simpel sesuai scriptmu, kita pakai CreateButton tapi kita simpan referensinya untuk dihapus nanti.
-			
-			-- Manual Button Creation agar masuk ke folder logic
-			local BtnFrame = Instance.new("Frame")
-			BtnFrame.Size = UDim2.new(1, 0, 0, 36)
-			BtnFrame.BackgroundTransparency = 1
-			BtnFrame.Parent = PlayerListFolder -- Masuk ke folder, tapi UIListLayout baca children container
-			-- Masalah: UIListLayout tidak membaca isi Folder.
-			-- Revisi: Masukkan ke Container, tapi beri nama unik agar bisa dihapus.
-			BtnFrame.Parent = Container
-			BtnFrame.Name = "PlayerBtn_" .. player.Name
-			
-			local Btn = Instance.new("TextButton")
-			Btn.Size = UDim2.new(1, -10, 1, 0)
-			Btn.Position = UDim2.new(0, 5, 0, 0)
-			Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30) -- Agak lebih gelap
-			Btn.Text = player.DisplayName .. " (@" .. player.Name .. ")"
-			Btn.TextColor3 = colors.text
-			Btn.Font = Enum.Font.GothamMedium
-			Btn.TextSize = 12
-			Btn.Parent = BtnFrame
-			Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
-			
-			Btn.MouseButton1Click:Connect(function()
-				StartFollowing(player)
-			end)
-		end
-	end
-end)
-
--- Override fungsi refresh list agar tombol player yang lama bisa dihapus
-local function RefreshPlayerListUI()
-	-- Hapus element yang namanya berawalan "PlayerBtn_"
+	-- Clean old buttons with tag "PlayerButton"
 	for _, gui in pairs(Container:GetChildren()) do
-		if gui.Name:match("PlayerBtn_") then
+		if gui.Name == "PlayerButtonFrame" then
 			gui:Destroy()
 		end
 	end
 	
-	-- Generate ulang
+	-- Create new buttons
 	for _, player in pairs(Players:GetPlayers()) do
 		if player ~= lp then
 			local BtnFrame = Instance.new("Frame")
-			BtnFrame.Name = "PlayerBtn_" .. player.Name
+			BtnFrame.Name = "PlayerButtonFrame" -- Tag name for deletion
 			BtnFrame.Size = UDim2.new(1, 0, 0, 36)
 			BtnFrame.BackgroundTransparency = 1
 			BtnFrame.Parent = Container
@@ -758,35 +648,13 @@ local function RefreshPlayerListUI()
 			end)
 		end
 	end
-end
-
--- Ganti callback tombol Refresh yang dibuat sebelumnya dengan fungsi yang benar
--- Kita cari tombol refresh yang tadi dibuat (agak hacky tapi rapi), atau buat ulang buttonnya.
--- Cara terbaik: Hapus tombol refresh di atas, kita buat ulang di bawah sini dengan fungsi benar.
--- (Script di atas saya edit sedikit, tapi implementasi final di bawah ini yang dipakai)
-
--- Kita hapus tombol refresh dummy di atas (dalam pikiran), dan buat yang fix disini:
--- Karena script dijalankan berurutan, code di atas "CreateButton('Refresh Player List'...)" akan membuat button.
--- Untuk rapi, saya akan menimpa tombol 'Refresh Player List' di atas dengan logika yang benar.
--- JADI BAGIAN INI SAYA TARUH LOGIC YANG BENAR LANGSUNG:
-
--- (Logic Refresh Player List sudah saya integrasikan di tombol Refresh Player List di bawah ini, ini menggantikan placeholder)
--- Mari kita hapus tombol dummy, kita gunakan yang ini:
-
-CreateSection("NOTIFICATIONS (BRAINROT)")
-
-CreateToggle("Notif DEVINE Brainrot", function()
-	notifConfig["Divine"] = not notifConfig["Divine"]
 end)
 
-CreateToggle("Notif CELESTIAL Brainrot", function()
-	notifConfig["Celestial"] = not notifConfig["Celestial"]
-end)
+CreateSection("NOTIFICATIONS")
 
-CreateToggle("Notif COMMON Brainrot", function()
-	notifConfig["Common"] = not notifConfig["Common"]
-end)
-
+CreateToggle("Notif DEVINE", function() notifConfig["Divine"] = not notifConfig["Divine"] end)
+CreateToggle("Notif CELESTIAL", function() notifConfig["Celestial"] = not notifConfig["Celestial"] end)
+CreateToggle("Notif COMMON", function() notifConfig["Common"] = not notifConfig["Common"] end)
 
 CreateSection("VISUALS (ESP)")
 
@@ -794,17 +662,10 @@ CreateToggle("ESP Divine", function() toggleEspLogic("Divine", "Divine") end)
 CreateToggle("ESP Celestial", function() toggleEspLogic("Celestial", "Celestial") end)
 CreateToggle("ESP Common", function() toggleEspLogic("Common", "Common") end)
 
--- Penambahan UI Section untuk Arcade Event
 CreateSection("ARCADE EVENT")
 
--- [NEW] ESP Features for Arcade
-CreateToggle("ESP Game Console", function() 
-	toggleItemEsp("Console", "ArcadeEventConsoles") 
-end)
-
-CreateToggle("ESP Ticket", function() 
-	toggleItemEsp("Ticket", "ArcadeEventTickets") 
-end)
+CreateToggle("ESP Game Console", function() toggleItemEsp("Console", "ArcadeEventConsoles") end)
+CreateToggle("ESP Ticket", function() toggleItemEsp("Ticket", "ArcadeEventTickets") end)
 
 CreateToggle("Auto Game Console", function()
 	autoConsoleEnabled = not autoConsoleEnabled
@@ -868,16 +729,10 @@ CreateToggle("Fast Take", function()
 	fastTakeEnabled = not fastTakeEnabled
 	local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
 	if not activeFolder then return end
-
 	if fastTakeEnabled then
-		for _, descendant in pairs(activeFolder:GetDescendants()) do
-			applyFastTake(descendant)
-		end
+		for _, descendant in pairs(activeFolder:GetDescendants()) do applyFastTake(descendant) end
 		ftConnection = activeFolder.DescendantAdded:Connect(function(desc)
-			if desc.Name == "TakePrompt" then
-				task.wait(0.1)
-				applyFastTake(desc)
-			end
+			if desc.Name == "TakePrompt" then task.wait(0.1) applyFastTake(desc) end
 		end)
 	else
 		if ftConnection then ftConnection:Disconnect() ftConnection = nil end
@@ -886,19 +741,7 @@ end)
 
 CreateButton("Delete Safe Walls", function()
 	local walls = workspace:FindFirstChild("VIPWalls") or workspace:FindFirstChild("Wallses")
-	if walls then
-		for _, v in pairs(walls:GetChildren()) do v:Destroy() end
-	end
+	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
--- Logic tambahan: Agar list player benar-benar bekerja, kita timpa fungsi button Refresh Player List terakhir kali
--- Cari tombol Refresh Player List (kita buat ulang fungsi yang benar di akhir biar rapi)
--- Karena struktur kode di atas berurutan, logic RefreshPlayerListUI sudah didefinisikan sebelum tombol dipanggil.
--- Jadi kita hanya perlu memanggilnya.
-
--- REVISI AKHIR BAGIAN PLAYER FOLLOWER (Timpa logic tombol refresh)
--- Karena di atas saya memecah blok kode, saya pastikan fungsi refresh berjalan:
--- Button "Refresh Player List" di atas memanggil RefreshPlayerListUI()
-
--- Finish
 print("✅ Dj Hub Remastered Loaded")
