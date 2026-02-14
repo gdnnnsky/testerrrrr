@@ -1,5 +1,5 @@
---// Dj Hub (Ultimate Fixed - Auto Equip GUID Support)
---// rtrrtrtr Features: Realtime Follow + Smart Auto Equip (Mutation Support) + Arcade ESP
+--// Dj Hub (Ultimate Version - Lag Reducer Added)
+--// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag+
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 local SoundService = game:GetService("SoundService")
+local Lighting = game:GetService("Lighting")
 
 local lp = Players.LocalPlayer
 
@@ -91,8 +92,8 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 380)
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -190)
+MainFrame.Size = UDim2.new(0, 450, 0, 420) -- Diperpanjang untuk section baru
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -210)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.15 
 MainFrame.BorderSizePixel = 0
@@ -320,25 +321,12 @@ local autoEquipEnabled = false
 --// LOGIC FUNCTIONS
 --=============================================================================
 
--- 1. Helper Logic: Check Item Name (Handles GUID & Mutations)
+-- 1. Helper Logic: Check Item Name
 local function isTargetItem(tool, keyword)
 	if not tool:IsA("Tool") then return false end
-	
-	-- Prioritas 1: Cek ToolTip (Biasanya nama asli ada disini, e.g "Blood Divine Block")
-	if tool.ToolTip and string.find(tool.ToolTip, keyword) then 
-		return true 
-	end
-	
-	-- Prioritas 2: Cek Nama biasa (Just in case game rename tools local)
-	if string.find(tool.Name, keyword) then 
-		return true 
-	end
-	
-	-- Optional: Jika ada Custom Attribute
-	if tool:GetAttribute("DisplayName") and string.find(tool:GetAttribute("DisplayName"), keyword) then
-		return true
-	end
-	
+	if tool.ToolTip and string.find(tool.ToolTip, keyword) then return true end
+	if string.find(tool.Name, keyword) then return true end
+	if tool:GetAttribute("DisplayName") and string.find(tool:GetAttribute("DisplayName"), keyword) then return true end
 	return false
 end
 
@@ -488,7 +476,7 @@ local function toggleItemEsp(mode, folderName)
 	end
 end
 
--- 3. Follow Player Logic (REALTIME)
+-- 3. Follow Player Logic
 local TargetLabel -- Forward declaration
 
 local function StopFollowing()
@@ -509,7 +497,6 @@ local function StartFollowing(targetPlayer)
 	
 	followConnection = RunService.RenderStepped:Connect(function()
 		if followTarget and followTarget.Character and followTarget.Character:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-			
 			local tRoot = followTarget.Character.HumanoidRootPart
 			local myRoot = lp.Character.HumanoidRootPart
 			
@@ -528,7 +515,7 @@ local function StartFollowing(targetPlayer)
 	end)
 end
 
--- 4. Auto Equip Logic (UPDATED: GUID & Mutation Support)
+-- 4. Auto Equip Logic
 task.spawn(function()
 	while true do
 		task.wait(0.2) 
@@ -536,41 +523,24 @@ task.spawn(function()
 			local humanoid = lp.Character:FindFirstChild("Humanoid")
 			if humanoid then
 				local currentTool = lp.Character:FindFirstChildOfClass("Tool")
-				
-				-- Cek status item yang sedang dipegang
 				local holdingDivine = currentTool and isTargetItem(currentTool, "Divine Block")
 				local holdingCelestial = currentTool and isTargetItem(currentTool, "Celestial Block")
 				
-				-- LOGIC UTAMA:
-				-- Jika TIDAK sedang memegang Divine Block, kita cari di tas.
 				if not holdingDivine then
-					
-					-- Cari Divine di Backpack (Loop karena nama file random UUID)
 					local divineInBag = nil
 					for _, item in pairs(lp.Backpack:GetChildren()) do
-						if isTargetItem(item, "Divine Block") then
-							divineInBag = item
-							break
-						end
+						if isTargetItem(item, "Divine Block") then divineInBag = item break end
 					end
 					
 					if divineInBag then
 						humanoid:EquipTool(divineInBag)
 					else
-						-- Jika Divine gak ada, cek apakah sedang megang Celestial?
-						-- Jika TIDAK, cari Celestial di tas.
 						if not holdingCelestial then
 							local celestialInBag = nil
 							for _, item in pairs(lp.Backpack:GetChildren()) do
-								if isTargetItem(item, "Celestial Block") then
-									celestialInBag = item
-									break
-								end
+								if isTargetItem(item, "Celestial Block") then celestialInBag = item break end
 							end
-							
-							if celestialInBag then
-								humanoid:EquipTool(celestialInBag)
-							end
+							if celestialInBag then humanoid:EquipTool(celestialInBag) end
 						end
 					end
 				end
@@ -675,6 +645,42 @@ CreateToggle("Auto Equip Best Block", function()
 	autoEquipEnabled = not autoEquipEnabled
 end)
 
+CreateSection("OPTIMIZATION")
+
+CreateButton("Reduce Lag+ (Delete Maps)", function()
+	local targets = {
+		"ActiveBrainrots", "ActiveLuckyBlocks", "ActiveTsunamis", "Bases",
+		"Leaderboards", "Misc", "SellPoint", "SpawnMachines",
+		"ArcadeWheel", "EventTimers", "LimitedShop", "UpgradeShop", "WaveMachine"
+	}
+	
+	-- Delete Workspace Targets
+	for _, name in pairs(targets) do
+		local obj = workspace:FindFirstChild(name)
+		if obj then 
+			pcall(function() obj:Destroy() end)
+		end
+	end
+	
+	-- Clear Lighting
+	for _, v in pairs(Lighting:GetChildren()) do
+		if not v:IsA("Script") then
+			pcall(function() v:Destroy() end)
+		end
+	end
+	
+	-- Reset basic lighting settings for better FPS
+	Lighting.GlobalShadows = false
+	Lighting.FogEnd = 100000
+	Lighting.Brightness = 2
+	
+	StarterGui:SetCore("SendNotification", {
+		Title = "LAG REDUCED",
+		Text = "Maps & Lighting deleted for FPS Boost!",
+		Duration = 3
+	})
+end)
+
 CreateSection("PLAYER FOLLOWER")
 
 TargetLabel = Instance.new("TextLabel")
@@ -691,18 +697,14 @@ CreateButton("Stop Following", function()
 end)
 
 CreateButton("Refresh Player List", function()
-	-- Clean old buttons with tag "PlayerButton"
 	for _, gui in pairs(Container:GetChildren()) do
-		if gui.Name == "PlayerButtonFrame" then
-			gui:Destroy()
-		end
+		if gui.Name == "PlayerButtonFrame" then gui:Destroy() end
 	end
 	
-	-- Create new buttons
 	for _, player in pairs(Players:GetPlayers()) do
 		if player ~= lp then
 			local BtnFrame = Instance.new("Frame")
-			BtnFrame.Name = "PlayerButtonFrame" -- Tag name for deletion
+			BtnFrame.Name = "PlayerButtonFrame"
 			BtnFrame.Size = UDim2.new(1, 0, 0, 36)
 			BtnFrame.BackgroundTransparency = 1
 			BtnFrame.Parent = Container
@@ -718,9 +720,7 @@ CreateButton("Refresh Player List", function()
 			Btn.Parent = BtnFrame
 			Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
 			
-			Btn.MouseButton1Click:Connect(function()
-				StartFollowing(player)
-			end)
+			Btn.MouseButton1Click:Connect(function() StartFollowing(player) end)
 		end
 	end
 end)
@@ -819,4 +819,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (GUID Fixed) Loaded")
+print("✅ Dj Hub Remastered (Full Features) Loaded")
