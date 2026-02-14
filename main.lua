@@ -17,7 +17,7 @@ local lp = Players.LocalPlayer
 local Library = {}
 local colors = {
 	background = Color3.fromRGB(15, 15, 15),
-	accent = Color3.fromRGB(255, 120, 30),
+	accent = Color3.fromRGB(255, 120, 30), -- Warna Orange mirip Lynx
 	text = Color3.fromRGB(240, 240, 240),
 	subText = Color3.fromRGB(150, 150, 150),
 	toggleOn = Color3.fromRGB(255, 120, 30),
@@ -51,7 +51,7 @@ ScreenGui.Name = "DjHubRemastered"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parent
 
--- 3. Dragging Function
+-- 3. Dragging Function (Mobile Support)
 local function makeDraggable(frame, handle)
 	handle = handle or frame
 	local dragging, dragInput, dragStart, startPos
@@ -95,12 +95,13 @@ MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 450, 0, 320)
 MainFrame.Position = UDim2.new(0.5, -225, 0.5, -160)
 MainFrame.BackgroundColor3 = colors.background
-MainFrame.BackgroundTransparency = 0.15
+MainFrame.BackgroundTransparency = 0.15 -- Transparan dikit
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
+-- Side Accent Line (Style Lynx)
 local AccentLine = Instance.new("Frame")
 AccentLine.Size = UDim2.new(0, 4, 1, 0)
 AccentLine.BackgroundColor3 = colors.accent
@@ -108,6 +109,7 @@ AccentLine.BorderSizePixel = 0
 AccentLine.Parent = MainFrame
 Instance.new("UICorner", AccentLine).CornerRadius = UDim.new(0, 8)
 
+-- Header
 local Header = Instance.new("Frame")
 Header.Size = UDim2.new(1, -20, 0, 40)
 Header.Position = UDim2.new(0, 20, 0, 0)
@@ -126,6 +128,7 @@ Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
 Title.Parent = Header
 
+-- Buttons (Close & Min)
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Text = "×"
 CloseBtn.Font = Enum.Font.GothamMedium
@@ -146,6 +149,7 @@ MinBtn.Size = UDim2.new(0, 40, 1, 0)
 MinBtn.Position = UDim2.new(1, -80, 0, 0)
 MinBtn.Parent = Header
 
+-- Content Container
 local Container = Instance.new("ScrollingFrame")
 Container.Size = UDim2.new(1, -24, 1, -50)
 Container.Position = UDim2.new(0, 14, 0, 45)
@@ -161,9 +165,11 @@ UIList.Parent = Container
 UIList.Padding = UDim.new(0, 6)
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
 
+-- Apply Drag
 makeDraggable(MainFrame, Header)
 
--- 5. Component Functions
+-- 5. Component Functions (Toggle & Button)
+
 local function CreateToggle(text, callback)
 	local ToggleFrame = Instance.new("Frame")
 	ToggleFrame.Size = UDim2.new(1, 0, 0, 36)
@@ -202,14 +208,22 @@ local function CreateToggle(text, callback)
 	Trigger.Parent = ToggleFrame
 	
 	local toggled = false
+	
 	Trigger.MouseButton1Click:Connect(function()
 		toggled = not toggled
+		
+		-- Animation
 		local targetColor = toggled and colors.toggleOn or colors.toggleOff
 		local targetPos = toggled and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
+		
 		TweenService:Create(SwitchBg, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
 		TweenService:Create(Circle, TweenInfo.new(0.2), {Position = targetPos}):Play()
+		
+		-- Logic Callback
 		pcall(callback)
 	end)
+	
+	return Trigger -- Return trigger if needed
 end
 
 local function CreateButton(text, callback)
@@ -230,6 +244,7 @@ local function CreateButton(text, callback)
 	Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
 	
 	Btn.MouseButton1Click:Connect(function()
+		-- Click Effect
 		TweenService:Create(Btn, TweenInfo.new(0.1), {BackgroundColor3 = colors.accent}):Play()
 		task.delay(0.1, function()
 			TweenService:Create(Btn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
@@ -252,11 +267,12 @@ local function CreateSection(text)
 	Sec.Parent = Container
 end
 
--- 6. Minimize Logic
+-- 6. Minimize Logic (Kotak Kecil)
 local minimized = false
 local restoreSize = MainFrame.Size
 local restorePos = MainFrame.Position
 
+-- Icon untuk mode minimize
 local MinIcon = Instance.new("TextButton")
 MinIcon.Name = "MiniIcon"
 MinIcon.Size = UDim2.new(0, 50, 0, 50)
@@ -271,22 +287,24 @@ MinIcon.Parent = ScreenGui
 Instance.new("UICorner", MinIcon).CornerRadius = UDim.new(0, 10)
 Instance.new("UIStroke", MinIcon).Color = colors.accent
 Instance.new("UIStroke", MinIcon).Thickness = 2
+Instance.new("UIStroke", MinIcon).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
+-- Buat icon bisa didrag juga
 makeDraggable(MinIcon)
 
 MinBtn.MouseButton1Click:Connect(function()
 	minimized = true
-	restorePos = MainFrame.Position
+	restorePos = MainFrame.Position -- Save posisi terakhir
 	MainFrame.Visible = false
 	MinIcon.Visible = true
-	MinIcon.Position = restorePos
+	MinIcon.Position = restorePos -- Muncul di posisi GUI terakhir
 end)
 
 MinIcon.MouseButton1Click:Connect(function()
 	minimized = false
 	MinIcon.Visible = false
 	MainFrame.Visible = true
-	MainFrame.Position = MinIcon.Position
+	MainFrame.Position = MinIcon.Position -- Restore di posisi icon terakhir
 end)
 
 CloseBtn.MouseButton1Click:Connect(function()
@@ -294,23 +312,42 @@ CloseBtn.MouseButton1Click:Connect(function()
 end)
 
 --=============================================================================
---// FEATURE LOGIC INTEGRATION
+--// FEATURE LOGIC INTEGRATION (Logic Asli + Feature Baru)
 --=============================================================================
 
-local platformEnabled, pPart, pConn, lastY = false, nil, nil, 0
-local noclipOn, noclipConn = false, nil
+-- Variables Logic
+local platformEnabled = false
+local pPart, pConn, lastY = nil, nil, 0
+local noclipOn = false
+local noclipConn = nil
 local ESP = { enabled = {}, connections = {}, markers = {} }
-local fastTakeEnabled, ftConnection = false, nil
+local fastTakeEnabled = false
+local ftConnection = nil
+
+-- Penambahan Variabel Logic untuk Auto Collect Arcade Event
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
+local consoleConnection = nil
+local ticketConnection = nil
 
-local notifConfig = { Divine = false, Celestial = false, Common = false }
+-- Variables Notif Logic
+local notifConfig = {
+	Divine = false,
+	Celestial = false,
+	Common = false
+}
 local notifListeners = {}
 
+-- 1. Helper Logic Functions (UPDATED FOR TIMER & NAME ESP)
 local function removeMarker(obj)
 	local data = ESP.markers[obj]
 	if data then
-		pcall(function() data.hl:Destroy() data.bb:Destroy() data.ac:Disconnect() if data.tc then data.tc:Disconnect() end end)
+		pcall(function() 
+			data.hl:Destroy() 
+			data.bb:Destroy() 
+			data.ac:Disconnect()
+			if data.tc then data.tc:Disconnect() end -- Disconnect timer listener
+		end)
 		ESP.markers[obj] = nil
 	end
 end
@@ -320,39 +357,88 @@ local function addMarker(obj, label)
 	local root = obj:FindFirstChild("Root") or obj:FindFirstChildWhichIsA("BasePart", true)
 	if not root or ESP.markers[obj] then return end
 	
-	local highlightColor, nameColorHex = Color3.fromRGB(255, 255, 255), ""
-	if label == "Divine" then highlightColor = Color3.fromRGB(255, 215, 0) nameColorHex = "rgb(255,215,0)"
-	elseif label == "Celestial" then highlightColor = Color3.fromRGB(255, 105, 180) nameColorHex = "rgb(255,105,180)"
-	else highlightColor = Color3.fromRGB(0, 255, 0) nameColorHex = "rgb(0,255,0)" end
+	-- 1. Tentukan Warna dan Format RichText
+	local highlightColor = Color3.fromRGB(255, 255, 255)
+	local nameColorHex = ""
+	
+	if label == "Divine" then
+		highlightColor = Color3.fromRGB(255, 215, 0) -- KUNING
+		nameColorHex = "rgb(255,215,0)"
+	elseif label == "Celestial" then
+		highlightColor = Color3.fromRGB(255, 105, 180) -- PINK
+		nameColorHex = "rgb(255,105,180)"
+	else -- Common
+		highlightColor = Color3.fromRGB(0, 255, 0) -- HIJAU
+		nameColorHex = "rgb(0,255,0)"
+	end
 
+	-- 2. Cari Nama Asli Brainrot (Model di dalam RenderedBrainrot)
 	local realName = "Unknown"
 	for _, child in pairs(obj:GetChildren()) do
-		if child:IsA("Model") and child.Name ~= "RenderedBrainrot" then realName = child.Name break end
+		-- Asumsi nama brainrot adalah Model selain Root
+		if child:IsA("Model") and child.Name ~= "RenderedBrainrot" then
+			realName = child.Name
+			break
+		end
 	end
 
-	local hl = Instance.new("Highlight", obj) hl.FillColor = highlightColor hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-	local bb = Instance.new("BillboardGui", obj) bb.Adornee = root bb.Size = UDim2.new(0, 200, 0, 50) bb.AlwaysOnTop = true bb.StudsOffset = Vector3.new(0, 4, 0)
-	local txt = Instance.new("TextLabel", bb) txt.Size = UDim2.new(1,0,1,0) txt.BackgroundTransparency = 1 txt.TextStrokeTransparency = 0 txt.Font = Enum.Font.GothamBold txt.RichText = true txt.TextSize = 13
-	
-	local timerLabel = nil
-	pcall(function() timerLabel = obj.Root.TimerGui.TimeLeft.TimeLeft end)
+	-- 3. Setup Visual ESP
+	local hl = Instance.new("Highlight", obj)
+	hl.FillColor = highlightColor
+	hl.OutlineColor = Color3.fromRGB(255, 255, 255)
 
+	local bb = Instance.new("BillboardGui", obj)
+	bb.Adornee = root
+	bb.Size = UDim2.new(0, 200, 0, 50)
+	bb.AlwaysOnTop = true
+	bb.StudsOffset = Vector3.new(0, 4, 0) -- Di naikkan dikit biar jelas
+	
+	local txt = Instance.new("TextLabel", bb)
+	txt.Size = UDim2.new(1,0,1,0)
+	txt.BackgroundTransparency = 1
+	txt.TextStrokeTransparency = 0
+	txt.Font = Enum.Font.GothamBold
+	txt.RichText = true -- Enable RichText untuk warna-warni
+	txt.TextSize = 13
+	
+	-- 4. Cari Timer Label (Path sesuai gambar: Root -> TimerGui -> TimeLeft -> TimeLeft)
+	local timerLabel = nil
+	pcall(function()
+		timerLabel = obj.Root.TimerGui.TimeLeft.TimeLeft
+	end)
+
+	-- Fungsi update text agar realtime
 	local function updateEspText()
 		local timeLeftStr = timerLabel and timerLabel.Text or "0s"
+		-- Format: Nama (Warna Rarity) + Spasi + Timer (Warna Merah)
 		txt.Text = string.format('<font color="%s">%s</font> <font color="rgb(255,0,0)">(%s)</font>', nameColorHex, realName, timeLeftStr)
 	end
+	
+	-- Initial update
 	updateEspText()
 
+	-- Listener perubahan text timer
 	local timerConnection = nil
-	if timerLabel then timerConnection = timerLabel:GetPropertyChangedSignal("Text"):Connect(updateEspText) end
+	if timerLabel then
+		timerConnection = timerLabel:GetPropertyChangedSignal("Text"):Connect(updateEspText)
+	end
 
-	ESP.markers[obj] = { hl = hl, bb = bb, ac = obj.AncestryChanged:Connect(function() if not obj.Parent then removeMarker(obj) end end), tc = timerConnection }
+	ESP.markers[obj] = { 
+		hl = hl, 
+		bb = bb, 
+		ac = obj.AncestryChanged:Connect(function() if not obj.Parent then removeMarker(obj) end end),
+		tc = timerConnection -- Simpan koneksi timer untuk dicopot nanti
+	}
 end
 
 local function toggleEspLogic(mode, folderName)
 	ESP.enabled[mode] = not ESP.enabled[mode]
+	local isOn = ESP.enabled[mode]
+
+	if ESP.connections[mode] then ESP.connections[mode]:Disconnect() end
 	local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild(folderName)
-	if ESP.enabled[mode] and folder then
+	
+	if isOn and folder then
 		for _, v in pairs(folder:GetChildren()) do addMarker(v, mode) end
 		ESP.connections[mode] = folder.ChildAdded:Connect(function(c) addMarker(c, mode) end)
 	else
@@ -361,32 +447,62 @@ local function toggleEspLogic(mode, folderName)
 end
 
 local function applyFastTake(prompt)
-	if prompt:IsA("ProximityPrompt") and prompt.Name == "TakePrompt" then prompt.HoldDuration = 0 prompt.MaxActivationDistance = 25 end
+	if prompt:IsA("ProximityPrompt") and prompt.Name == "TakePrompt" then
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 25
+	end
 end
 
+-- FUNCTION NOTIF BARU (SOUND & TEXT)
 local function playNotifSoundAndText(rarity)
-	local sound = Instance.new("Sound") sound.SoundId = "rbxassetid://8486683243" sound.Volume = 7 sound.Parent = SoundService sound:Play()
+	-- Play Sound
+	local sound = Instance.new("Sound")
+	sound.SoundId = "rbxassetid://8486683243"
+	sound.Volume = 7
+	sound.Parent = SoundService
+	sound:Play()
+	
+	-- Cleanup sound
 	game:GetService("Debris"):AddItem(sound, 3)
-	StarterGui:SetCore("SendNotification", { Title = rarity .. " BRAINROT!", Text = "TEXT (" .. rarity .. " BRAINROT MUNCUL!)", Duration = 7, Icon = "rbxassetid://8486683243" })
+
+	-- Show Notification
+	StarterGui:SetCore("SendNotification", {
+		Title = rarity .. " BRAINROT!",
+		Text = "TEXT (" .. rarity .. " BRAINROT MUNCUL!)",
+		Duration = 7,
+		Icon = "rbxassetid://8486683243"
+	})
 end
 
+-- SETUP LISTENER UNTUK NOTIF
 local function setupNotifListener(category)
 	if notifListeners[category] then return end
-	local targetFolder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild(category)
+	
+	local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
+	if not activeFolder then return end
+	
+	local targetFolder = activeFolder:FindFirstChild(category)
 	if targetFolder then
-		notifListeners[category] = targetFolder.ChildAdded:Connect(function()
-			if notifConfig[category] then playNotifSoundAndText(category:upper()) end
+		notifListeners[category] = targetFolder.ChildAdded:Connect(function(child)
+			if notifConfig[category] then
+				playNotifSoundAndText(category:upper())
+			end
 		end)
 	end
 end
 
+-- Initialize Listeners
 task.spawn(function()
-	if not workspace:FindFirstChild("ActiveBrainrots") then workspace.ChildAdded:Wait() end
-	setupNotifListener("Divine") setupNotifListener("Celestial") setupNotifListener("Common")
+	if not workspace:FindFirstChild("ActiveBrainrots") then
+		workspace.ChildAdded:Wait()
+	end
+	setupNotifListener("Divine")
+	setupNotifListener("Celestial")
+	setupNotifListener("Common")
 end)
 
 --=============================================================================
---// UI ELEMENT CREATION 
+--// UI ELEMENT CREATION (MAPPING LOGIC KE UI)
 --=============================================================================
 
 CreateSection("PLAYER")
@@ -394,17 +510,31 @@ CreateSection("PLAYER")
 CreateToggle("Platform Walk", function()
 	platformEnabled = not platformEnabled
 	if platformEnabled then
-		pPart = Instance.new("Part", workspace) pPart.Name = "DjPlatform" pPart.Size = Vector3.new(15, 0.5, 15) pPart.Anchored = true pPart.Transparency = 0.5 pPart.Material = Enum.Material.ForceField pPart.Color = Color3.fromRGB(0, 255, 255)
-		if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then lastY = lp.Character.HumanoidRootPart.Position.Y - 3.2 end
+		pPart = Instance.new("Part", workspace)
+		pPart.Name = "DjPlatform"
+		pPart.Size = Vector3.new(15, 0.5, 15)
+		pPart.Anchored = true
+		pPart.Transparency = 0.5
+		pPart.Material = Enum.Material.ForceField
+		pPart.Color = Color3.fromRGB(0, 255, 255)
+
+		if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+			lastY = lp.Character.HumanoidRootPart.Position.Y - 3.2
+		end
+
 		pConn = RunService.PostSimulation:Connect(function()
 			if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-				local hrp, hum = lp.Character.HumanoidRootPart, lp.Character:FindFirstChild("Humanoid")
-				if hum and hum.FloorMaterial == Enum.Material.Air then lastY = hrp.Position.Y - 3.2 end
+				local hrp = lp.Character.HumanoidRootPart
+				local hum = lp.Character:FindFirstChild("Humanoid")
+				if hum and hum.FloorMaterial == Enum.Material.Air then
+					lastY = hrp.Position.Y - 3.2
+				end
 				pPart.CFrame = CFrame.new(hrp.Position.X, lastY, hrp.Position.Z)
 			end
 		end)
 	else
-		if pConn then pConn:Disconnect() pConn = nil end if pPart then pPart:Destroy() pPart = nil end
+		if pConn then pConn:Disconnect() pConn = nil end
+		if pPart then pPart:Destroy() pPart = nil end
 	end
 end)
 
@@ -412,98 +542,144 @@ CreateToggle("Noclip", function()
 	noclipOn = not noclipOn
 	if noclipOn then
 		noclipConn = RunService.Stepped:Connect(function()
-			if lp.Character then for _, v in pairs(lp.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
+			if lp.Character then
+				for _, v in pairs(lp.Character:GetDescendants()) do
+					if v:IsA("BasePart") then v.CanCollide = false end
+				end
+			end
 		end)
-	else if noclipConn then noclipConn:Disconnect() noclipConn = nil end end
+	else
+		if noclipConn then noclipConn:Disconnect() noclipConn = nil end
+	end
 end)
 
 CreateSection("NOTIFICATIONS (BRAINROT)")
-CreateToggle("Notif DEVINE Brainrot", function() notifConfig["Divine"] = not notifConfig["Divine"] end)
-CreateToggle("Notif CELESTIAL Brainrot", function() notifConfig["Celestial"] = not notifConfig["Celestial"] end)
-CreateToggle("Notif COMMON Brainrot", function() notifConfig["Common"] = not notifConfig["Common"] end)
+
+CreateToggle("Notif DEVINE Brainrot", function()
+	notifConfig["Divine"] = not notifConfig["Divine"]
+end)
+
+CreateToggle("Notif CELESTIAL Brainrot", function()
+	notifConfig["Celestial"] = not notifConfig["Celestial"]
+end)
+
+CreateToggle("Notif COMMON Brainrot", function()
+	notifConfig["Common"] = not notifConfig["Common"]
+end)
+
 
 CreateSection("VISUALS (ESP)")
+
 CreateToggle("ESP Divine", function() toggleEspLogic("Divine", "Divine") end)
 CreateToggle("ESP Celestial", function() toggleEspLogic("Celestial", "Celestial") end)
 CreateToggle("ESP Common", function() toggleEspLogic("Common", "Common") end)
 
+-- Penambahan UI Section untuk Arcade Event
 CreateSection("ARCADE EVENT")
+
+local function collectConsole(model)
+	if not autoConsoleEnabled then return end
+	if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+		local hrp = lp.Character.HumanoidRootPart
+		if model.Name == "Game Console" then
+			local part = model:FindFirstChild("Game Console")
+			if part and part:FindFirstChild("TouchInterest") then
+				-- Pindahkan part ke pemain secara paksa
+				part.CFrame = hrp.CFrame
+				-- Trigger event touch jika memungkinkan
+				if firetouchinterest then
+					firetouchinterest(hrp, part, 0)
+					firetouchinterest(hrp, part, 1)
+				end
+			end
+		end
+	end
+end
 
 CreateToggle("Auto Game Console", function()
 	autoConsoleEnabled = not autoConsoleEnabled
+	local folder = workspace:FindFirstChild("ArcadeEventConsoles")
+	
 	if autoConsoleEnabled then
+		if folder then
+			-- Ambil item yang sudah ada saat ini
+			for _, model in pairs(folder:GetChildren()) do
+				collectConsole(model)
+			end
+			-- Pasang listener untuk item yang baru muncul
+			consoleConnection = folder.ChildAdded:Connect(function(child)
+				task.wait(0.1) -- Sedikit jeda agar part ter-load sempurna
+				collectConsole(child)
+			end)
+		end
+		
+		-- Loop cadangan untuk memastikan tidak ada yang terlewat
 		task.spawn(function()
 			while autoConsoleEnabled do
-				task.wait(0.5) -- Jeda biar client nggak berat
-				local folder = workspace:FindFirstChild("ArcadeEventConsoles")
-				if folder and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-					local hrp = lp.Character.HumanoidRootPart
+				task.wait(1) 
+				if folder then
 					for _, model in pairs(folder:GetChildren()) do
-						if not autoConsoleEnabled then break end -- Berhenti jika toggle dimatikan
-						if model.Name == "Game Console" then
-							local part = model:FindFirstChild("Game Console")
-							if part and part:FindFirstChild("TouchInterest") then
-								-- Simpan posisi awal player
-								local originalCFrame = hrp.CFrame
-								
-								-- TELEPORT: Pindahkan player ke posisi item
-								hrp.CFrame = part.CFrame
-								
-								-- Eksekusi touch event juga untuk memastikan keambil
-								if firetouchinterest then
-									firetouchinterest(hrp, part, 0)
-									firetouchinterest(hrp, part, 1)
-								end
-								
-								-- Tunggu sebentar agar server memproses sentuhan
-								task.wait(0.15) 
-								
-								-- TELEPORT BALIK: Pindahkan player ke posisi aman semula
-								hrp.CFrame = originalCFrame
-								
-								-- Jeda sebentar sebelum ambil item berikutnya biar nggak disangka nge-hack
-								task.wait(0.1) 
-							end
-						end
+						collectConsole(model)
 					end
 				end
 			end
 		end)
+	else
+		-- Putuskan koneksi jika toggle dimatikan
+		if consoleConnection then consoleConnection:Disconnect() consoleConnection = nil end
 	end
 end)
 
+local function collectTicket(model)
+	if not autoTicketEnabled then return end
+	if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+		local hrp = lp.Character.HumanoidRootPart
+		if model.Name == "Ticket" then
+			local part = model:FindFirstChild("Ticket")
+			if part and part:FindFirstChild("TouchInterest") then
+				-- Pindahkan part ke pemain secara paksa
+				part.CFrame = hrp.CFrame
+				-- Trigger event touch jika memungkinkan
+				if firetouchinterest then
+					firetouchinterest(hrp, part, 0)
+					firetouchinterest(hrp, part, 1)
+				end
+			end
+		end
+	end
+end
+
 CreateToggle("Auto Tickets", function()
 	autoTicketEnabled = not autoTicketEnabled
+	local folder = workspace:FindFirstChild("ArcadeEventTickets")
+	
 	if autoTicketEnabled then
+		if folder then
+			-- Ambil item yang sudah ada saat ini
+			for _, model in pairs(folder:GetChildren()) do
+				collectTicket(model)
+			end
+			-- Pasang listener untuk item yang baru muncul
+			ticketConnection = folder.ChildAdded:Connect(function(child)
+				task.wait(0.1) -- Sedikit jeda agar part ter-load sempurna
+				collectTicket(child)
+			end)
+		end
+		
+		-- Loop cadangan untuk memastikan tidak ada yang terlewat
 		task.spawn(function()
 			while autoTicketEnabled do
-				task.wait(0.5)
-				local folder = workspace:FindFirstChild("ArcadeEventTickets")
-				if folder and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-					local hrp = lp.Character.HumanoidRootPart
+				task.wait(1)
+				if folder then
 					for _, model in pairs(folder:GetChildren()) do
-						if not autoTicketEnabled then break end 
-						if model.Name == "Ticket" then
-							local part = model:FindFirstChild("Ticket")
-							if part and part:FindFirstChild("TouchInterest") then
-								
-								local originalCFrame = hrp.CFrame
-								hrp.CFrame = part.CFrame
-								
-								if firetouchinterest then
-									firetouchinterest(hrp, part, 0)
-									firetouchinterest(hrp, part, 1)
-								end
-								
-								task.wait(0.15)
-								hrp.CFrame = originalCFrame
-								task.wait(0.1)
-							end
-						end
+						collectTicket(model)
 					end
 				end
 			end
 		end)
+	else
+		-- Putuskan koneksi jika toggle dimatikan
+		if ticketConnection then ticketConnection:Disconnect() ticketConnection = nil end
 	end
 end)
 
@@ -515,14 +691,26 @@ CreateToggle("Fast Take", function()
 	if not activeFolder then return end
 
 	if fastTakeEnabled then
-		for _, descendant in pairs(activeFolder:GetDescendants()) do applyFastTake(descendant) end
-		ftConnection = activeFolder.DescendantAdded:Connect(function(desc) if desc.Name == "TakePrompt" then task.wait(0.1) applyFastTake(desc) end end)
-	else if ftConnection then ftConnection:Disconnect() ftConnection = nil end end
+		for _, descendant in pairs(activeFolder:GetDescendants()) do
+			applyFastTake(descendant)
+		end
+		ftConnection = activeFolder.DescendantAdded:Connect(function(desc)
+			if desc.Name == "TakePrompt" then
+				task.wait(0.1)
+				applyFastTake(desc)
+			end
+		end)
+	else
+		if ftConnection then ftConnection:Disconnect() ftConnection = nil end
+	end
 end)
 
 CreateButton("Delete Safe Walls", function()
 	local walls = workspace:FindFirstChild("VIPWalls") or workspace:FindFirstChild("Wallses")
-	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
+	if walls then
+		for _, v in pairs(walls:GetChildren()) do v:Destroy() end
+	end
 end)
 
-print("✅ Dj Hub Remastered (Teleport Method) Loaded")
+-- Finish
+print("✅ Dj Hub Remastered Loaded")
