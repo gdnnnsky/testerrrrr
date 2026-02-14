@@ -350,6 +350,7 @@ local function removeMarker(obj)
 	end
 end
 
+-- [EXISTING] Logic Marker untuk Brainrot (Complex)
 local function addMarker(obj, label)
 	if not obj:IsA("Model") or obj.Name ~= "RenderedBrainrot" then return end
 	local root = obj:FindFirstChild("Root") or obj:FindFirstChildWhichIsA("BasePart", true)
@@ -429,6 +430,54 @@ local function addMarker(obj, label)
 	}
 end
 
+-- [NEW] Logic Marker untuk Arcade Items (Ticket/Console)
+local function addItemMarker(obj, type)
+	if ESP.markers[obj] then return end
+	
+	local root = obj:FindFirstChildWhichIsA("BasePart")
+	if not root then return end
+	
+	-- Config warna
+	local color = Color3.fromRGB(255, 255, 255)
+	local labelText = "Item"
+	
+	if type == "Ticket" then
+		color = Color3.fromRGB(0, 255, 255) -- Cyan
+		labelText = "🎟 Ticket"
+	elseif type == "Console" then
+		color = Color3.fromRGB(170, 0, 255) -- Purple
+		labelText = "🎮 Console"
+	end
+	
+	-- Highlight
+	local hl = Instance.new("Highlight", obj)
+	hl.FillColor = color
+	hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+	hl.FillTransparency = 0.5
+	
+	-- Text
+	local bb = Instance.new("BillboardGui", obj)
+	bb.Adornee = root
+	bb.Size = UDim2.new(0, 200, 0, 50)
+	bb.AlwaysOnTop = true
+	bb.StudsOffset = Vector3.new(0, 2, 0)
+	
+	local txt = Instance.new("TextLabel", bb)
+	txt.Size = UDim2.new(1,0,1,0)
+	txt.BackgroundTransparency = 1
+	txt.TextStrokeTransparency = 0
+	txt.TextColor3 = color
+	txt.Font = Enum.Font.GothamBold
+	txt.TextSize = 13
+	txt.Text = labelText
+	
+	ESP.markers[obj] = {
+		hl = hl,
+		bb = bb,
+		ac = obj.AncestryChanged:Connect(function() if not obj.Parent then removeMarker(obj) end end)
+	}
+end
+
 local function toggleEspLogic(mode, folderName)
 	ESP.enabled[mode] = not ESP.enabled[mode]
 	local isOn = ESP.enabled[mode]
@@ -441,6 +490,26 @@ local function toggleEspLogic(mode, folderName)
 		ESP.connections[mode] = folder.ChildAdded:Connect(function(c) addMarker(c, mode) end)
 	else
 		for obj, _ in pairs(ESP.markers) do if obj:IsDescendantOf(folder) then removeMarker(obj) end end
+	end
+end
+
+-- [NEW] Toggle Logic untuk Item Arcade
+local function toggleItemEsp(mode, folderName)
+	ESP.enabled[mode] = not ESP.enabled[mode]
+	local isOn = ESP.enabled[mode]
+	
+	if ESP.connections[mode] then ESP.connections[mode]:Disconnect() end
+	
+	local folder = workspace:FindFirstChild(folderName)
+	
+	if isOn and folder then
+		for _, v in pairs(folder:GetChildren()) do addItemMarker(v, mode) end
+		ESP.connections[mode] = folder.ChildAdded:Connect(function(c) addItemMarker(c, mode) end)
+	else
+		-- Reuse removeMarker karena dia membersihkan berdasarkan key table
+		for obj, _ in pairs(ESP.markers) do 
+			if obj:IsDescendantOf(folder) then removeMarker(obj) end 
+		end
 	end
 end
 
@@ -574,6 +643,15 @@ CreateToggle("ESP Common", function() toggleEspLogic("Common", "Common") end)
 
 -- Penambahan UI Section untuk Arcade Event
 CreateSection("ARCADE EVENT")
+
+-- [NEW] ESP Features for Arcade
+CreateToggle("ESP Game Console", function() 
+	toggleItemEsp("Console", "ArcadeEventConsoles") 
+end)
+
+CreateToggle("ESP Ticket", function() 
+	toggleItemEsp("Ticket", "ArcadeEventTickets") 
+end)
 
 CreateToggle("Auto Game Console", function()
 	autoConsoleEnabled = not autoConsoleEnabled
