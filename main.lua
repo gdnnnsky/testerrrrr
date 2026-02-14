@@ -327,8 +327,6 @@ local ftConnection = nil
 -- Penambahan Variabel Logic untuk Auto Collect Arcade Event
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
-local consoleConnection = nil
-local ticketConnection = nil
 
 -- Variables Notif Logic
 local notifConfig = {
@@ -577,109 +575,59 @@ CreateToggle("ESP Common", function() toggleEspLogic("Common", "Common") end)
 -- Penambahan UI Section untuk Arcade Event
 CreateSection("ARCADE EVENT")
 
-local function collectConsole(model)
-	if not autoConsoleEnabled then return end
-	if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-		local hrp = lp.Character.HumanoidRootPart
-		if model.Name == "Game Console" then
-			local part = model:FindFirstChild("Game Console")
-			if part and part:FindFirstChild("TouchInterest") then
-				-- Pindahkan part ke pemain secara paksa
-				part.CFrame = hrp.CFrame
-				-- Trigger event touch jika memungkinkan
-				if firetouchinterest then
-					firetouchinterest(hrp, part, 0)
-					firetouchinterest(hrp, part, 1)
-				end
-			end
-		end
-	end
-end
-
 CreateToggle("Auto Game Console", function()
 	autoConsoleEnabled = not autoConsoleEnabled
-	local folder = workspace:FindFirstChild("ArcadeEventConsoles")
-	
 	if autoConsoleEnabled then
-		if folder then
-			-- Ambil item yang sudah ada saat ini
-			for _, model in pairs(folder:GetChildren()) do
-				collectConsole(model)
-			end
-			-- Pasang listener untuk item yang baru muncul
-			consoleConnection = folder.ChildAdded:Connect(function(child)
-				task.wait(0.1) -- Sedikit jeda agar part ter-load sempurna
-				collectConsole(child)
-			end)
-		end
-		
-		-- Loop cadangan untuk memastikan tidak ada yang terlewat
 		task.spawn(function()
 			while autoConsoleEnabled do
-				task.wait(1) 
-				if folder then
+				task.wait(0.2)
+				local folder = workspace:FindFirstChild("ArcadeEventConsoles")
+				if folder and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+					local hrp = lp.Character.HumanoidRootPart
 					for _, model in pairs(folder:GetChildren()) do
-						collectConsole(model)
+						if model.Name == "Game Console" then
+							local part = model:FindFirstChild("Game Console")
+							if part and part:FindFirstChild("TouchInterest") then
+								if firetouchinterest then
+									firetouchinterest(hrp, part, 0)
+									firetouchinterest(hrp, part, 1)
+								else
+									part.CFrame = hrp.CFrame
+								end
+							end
+						end
 					end
 				end
 			end
 		end)
-	else
-		-- Putuskan koneksi jika toggle dimatikan
-		if consoleConnection then consoleConnection:Disconnect() consoleConnection = nil end
 	end
 end)
 
-local function collectTicket(model)
-	if not autoTicketEnabled then return end
-	if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-		local hrp = lp.Character.HumanoidRootPart
-		if model.Name == "Ticket" then
-			local part = model:FindFirstChild("Ticket")
-			if part and part:FindFirstChild("TouchInterest") then
-				-- Pindahkan part ke pemain secara paksa
-				part.CFrame = hrp.CFrame
-				-- Trigger event touch jika memungkinkan
-				if firetouchinterest then
-					firetouchinterest(hrp, part, 0)
-					firetouchinterest(hrp, part, 1)
-				end
-			end
-		end
-	end
-end
-
 CreateToggle("Auto Tickets", function()
 	autoTicketEnabled = not autoTicketEnabled
-	local folder = workspace:FindFirstChild("ArcadeEventTickets")
-	
 	if autoTicketEnabled then
-		if folder then
-			-- Ambil item yang sudah ada saat ini
-			for _, model in pairs(folder:GetChildren()) do
-				collectTicket(model)
-			end
-			-- Pasang listener untuk item yang baru muncul
-			ticketConnection = folder.ChildAdded:Connect(function(child)
-				task.wait(0.1) -- Sedikit jeda agar part ter-load sempurna
-				collectTicket(child)
-			end)
-		end
-		
-		-- Loop cadangan untuk memastikan tidak ada yang terlewat
 		task.spawn(function()
 			while autoTicketEnabled do
-				task.wait(1)
-				if folder then
+				task.wait(0.2)
+				local folder = workspace:FindFirstChild("ArcadeEventTickets")
+				if folder and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+					local hrp = lp.Character.HumanoidRootPart
 					for _, model in pairs(folder:GetChildren()) do
-						collectTicket(model)
+						if model.Name == "Ticket" then
+							local part = model:FindFirstChild("Ticket")
+							if part and part:FindFirstChild("TouchInterest") then
+								if firetouchinterest then
+									firetouchinterest(hrp, part, 0)
+									firetouchinterest(hrp, part, 1)
+								else
+									part.CFrame = hrp.CFrame
+								end
+							end
+						end
 					end
 				end
 			end
 		end)
-	else
-		-- Putuskan koneksi jika toggle dimatikan
-		if ticketConnection then ticketConnection:Disconnect() ticketConnection = nil end
 	end
 end)
 
