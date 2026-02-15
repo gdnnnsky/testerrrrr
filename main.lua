@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Fixedsssssssssssssssssss Deposit Path (Inside Attachment) & Added Interaction Delay
+--// Update: Fixed Deposit Path (Main -> Prompts) & Auto Anchor
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -908,7 +908,7 @@ CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 		if isDepositing then return end
 		isDepositing = true -- Flag ON to pause Follow Player
 		
-		-- Path: ValentinesMap -> CandyGramStation -> Main -> Attachment -> ProximityPrompt
+		-- Path: ValentinesMap -> CandyGramStation -> Main -> Prompts -> ProximityPrompt
 		local map = workspace:FindFirstChild("ValentinesMap")
 		if map then
 			local station = map:FindFirstChild("CandyGramStation")
@@ -921,20 +921,21 @@ CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 						
 						-- 1. Teleport to Station (Slightly above Main)
 						hrp.CFrame = main.CFrame * CFrame.new(0, 4, 0)
+						hrp.Anchored = true -- [FIX] Anchor to ensure interactions
 						
 						-- [FIX] Wait for physics to sync/settle
 						task.wait(0.5) 
 						
-						local att = main:FindFirstChild("Attachment")
-						if att then
-							local prompt = att:FindFirstChild("ProximityPrompt")
+						local prompts = main:FindFirstChild("Prompts") -- [FIXED PATH]
+						if prompts then
+							local prompt = prompts:FindFirstChild("ProximityPrompt")
 							if prompt then
 								-- 2. Force Instant & Activate
 								prompt.MaxActivationDistance = 9999
 								prompt.HoldDuration = 0
+								prompt.RequiresLineOfSight = false
 								
 								-- Spam firing to ensure register
-								-- Using both methods for compatibility
 								for i = 1, 3 do
 									if fireproximityprompt then
 										fireproximityprompt(prompt)
@@ -952,6 +953,7 @@ CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 						
 						-- 3. Return to Old Position
 						if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+							lp.Character.HumanoidRootPart.Anchored = false -- [FIX] Unanchor
 							lp.Character.HumanoidRootPart.CFrame = oldPos
 						end
 					end
@@ -1034,4 +1036,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Fixed Deposit Path & Timing) Loaded")
+print("✅ Dj Hub Remastered (Correct Path Prompts & Auto Anchor) Loaded")
