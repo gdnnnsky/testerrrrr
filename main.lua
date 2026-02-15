@@ -1,5 +1,5 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
---// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect
+--// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -92,7 +92,7 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 450) -- Sedikit diperbesar untuk menu baru
+MainFrame.Size = UDim2.new(0, 450, 0, 480) -- Diperbesar sedikit lagi untuk menu deposit
 MainFrame.Position = UDim2.new(0.5, -225, 0.5, -210)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.15 
@@ -307,7 +307,8 @@ local fastTakeEnabled = false
 local ftConnection = nil
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
-local autoValentineEnabled = false -- [NEW] Variable for Valentine
+local autoValentineEnabled = false 
+local autoDepositEnabled = false -- [NEW] Variable for Deposit
 local notifConfig = { Divine = false, Celestial = false, Common = false }
 local notifListeners = {}
 
@@ -837,16 +838,48 @@ CreateToggle("Auto Collect Valentine", function()
 						end
 					end
 
-					-- 2. Coin Collection (ValentinesCoinParts -> ValentinesCoin)
+					-- 2. Coin Collection (ValentinesCoinParts -> FIXED: Looping all items)
 					local coinFolder = workspace:FindFirstChild("ValentinesCoinParts")
 					if coinFolder then
-						local coinModel = coinFolder:FindFirstChild("ValentinesCoin")
-						if coinModel then
-							local part = coinModel:IsA("BasePart") and coinModel or coinModel:FindFirstChildWhichIsA("BasePart")
-							collectPart(part)
+						for _, item in pairs(coinFolder:GetChildren()) do
+							-- Checks if name contains 'ValentinesCoin' or collects any item in folder
+							if string.find(item.Name, "ValentinesCoin") then
+								local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
+								collectPart(part)
+							end
 						end
 					end
 				end
+			end
+		end)
+	end
+end)
+
+CreateToggle("Auto Deposit Candy (4s)", function()
+	autoDepositEnabled = not autoDepositEnabled
+	if autoDepositEnabled then
+		task.spawn(function()
+			while autoDepositEnabled do
+				task.wait(4) -- Wait 4 seconds as requested
+				pcall(function()
+					-- Path: ValentinesMap -> CandyGramStation -> Main -> Attachment -> ProximityPrompt
+					local map = workspace:FindFirstChild("ValentinesMap")
+					if map then
+						local station = map:FindFirstChild("CandyGramStation")
+						if station then
+							local main = station:FindFirstChild("Main")
+							if main then
+								local att = main:FindFirstChild("Attachment")
+								if att then
+									local prompt = att:FindFirstChild("ProximityPrompt")
+									if prompt then
+										fireproximityprompt(prompt)
+									end
+								end
+							end
+						end
+					end
+				end)
 			end
 		end)
 	end
@@ -873,4 +906,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Full Features + Valentine Update) Loaded")
+print("✅ Dj Hub Remastered (Full Features + Valentine Deposit Fix) Loaded")
