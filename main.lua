@@ -1,5 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
+--// Upwdsawwwwdate: Resized GUI, Transparent BG, Draggable Minimized, Platform Shortcut, Instant Fast Interact
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -21,7 +22,9 @@ local colors = {
 	text = Color3.fromRGB(240, 240, 240),
 	subText = Color3.fromRGB(150, 150, 150),
 	toggleOn = Color3.fromRGB(255, 120, 30),
-	toggleOff = Color3.fromRGB(60, 60, 60)
+	toggleOff = Color3.fromRGB(60, 60, 60),
+	shortcutOn = Color3.fromRGB(0, 255, 128),
+	shortcutOff = Color3.fromRGB(255, 50, 50)
 }
 
 -- 1. Setup Parent
@@ -59,7 +62,7 @@ local function makeDraggable(frame, handle)
 	local function update(input)
 		local delta = input.Position - dragStart
 		local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-		TweenService:Create(frame, TweenInfo.new(0.1), {Position = newPos}):Play()
+		TweenService:Create(frame, TweenInfo.new(0.05), {Position = newPos}):Play()
 	end
 	
 	handle.InputBegan:Connect(function(input)
@@ -92,10 +95,12 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 480) -- Diperbesar sedikit lagi untuk menu deposit
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -210)
+-- [UPDATED] Ukuran diperkecil agar tidak memenuhi layar
+MainFrame.Size = UDim2.new(0, 360, 0, 400) 
+MainFrame.Position = UDim2.new(0.5, -180, 0.5, -200)
+-- [UPDATED] Lebih transparan
 MainFrame.BackgroundColor3 = colors.background
-MainFrame.BackgroundTransparency = 0.15 
+MainFrame.BackgroundTransparency = 0.35 
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
@@ -118,7 +123,7 @@ local Title = Instance.new("TextLabel")
 Title.Text = "Dj Hub <font color=\"rgb(255,120,30)\">Premium</font>"
 Title.RichText = true
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 18
+Title.TextSize = 16
 Title.TextColor3 = colors.text
 Title.Size = UDim2.new(1, -80, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
@@ -132,8 +137,8 @@ CloseBtn.Font = Enum.Font.GothamMedium
 CloseBtn.TextSize = 24
 CloseBtn.TextColor3 = colors.text
 CloseBtn.BackgroundTransparency = 1
-CloseBtn.Size = UDim2.new(0, 40, 1, 0)
-CloseBtn.Position = UDim2.new(1, -40, 0, 0)
+CloseBtn.Size = UDim2.new(0, 30, 1, 0)
+CloseBtn.Position = UDim2.new(1, -30, 0, 0)
 CloseBtn.Parent = Header
 
 local MinBtn = Instance.new("TextButton")
@@ -142,8 +147,8 @@ MinBtn.Font = Enum.Font.GothamMedium
 MinBtn.TextSize = 24
 MinBtn.TextColor3 = colors.text
 MinBtn.BackgroundTransparency = 1
-MinBtn.Size = UDim2.new(0, 40, 1, 0)
-MinBtn.Position = UDim2.new(1, -80, 0, 0)
+MinBtn.Size = UDim2.new(0, 30, 1, 0)
+MinBtn.Position = UDim2.new(1, -60, 0, 0)
 MinBtn.Parent = Header
 
 local Container = Instance.new("ScrollingFrame")
@@ -174,7 +179,7 @@ local function CreateToggle(text, callback)
 	local Label = Instance.new("TextLabel")
 	Label.Text = text
 	Label.Font = Enum.Font.GothamSemibold
-	Label.TextSize = 14
+	Label.TextSize = 13
 	Label.TextColor3 = colors.text
 	Label.Size = UDim2.new(0.7, 0, 1, 0)
 	Label.Position = UDim2.new(0, 10, 0, 0)
@@ -210,7 +215,7 @@ local function CreateToggle(text, callback)
 		local targetPos = toggled and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
 		TweenService:Create(SwitchBg, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
 		TweenService:Create(Circle, TweenInfo.new(0.2), {Position = targetPos}):Play()
-		pcall(callback)
+		pcall(callback, toggled)
 	end)
 end
 
@@ -227,7 +232,7 @@ local function CreateButton(text, callback)
 	Btn.Text = text
 	Btn.TextColor3 = colors.text
 	Btn.Font = Enum.Font.GothamBold
-	Btn.TextSize = 14
+	Btn.TextSize = 13
 	Btn.Parent = BtnFrame
 	Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
 	
@@ -256,7 +261,6 @@ end
 
 -- 6. Minimize Logic
 local minimized = false
-local restorePos = MainFrame.Position
 local MinIcon = Instance.new("TextButton")
 MinIcon.Name = "MiniIcon"
 MinIcon.Size = UDim2.new(0, 50, 0, 50)
@@ -273,20 +277,22 @@ Instance.new("UIStroke", MinIcon).Color = colors.accent
 Instance.new("UIStroke", MinIcon).Thickness = 2
 Instance.new("UIStroke", MinIcon).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
+-- [UPDATED] Minimized Icon is Draggable
 makeDraggable(MinIcon)
 
 MinBtn.MouseButton1Click:Connect(function()
 	minimized = true
-	restorePos = MainFrame.Position
 	MainFrame.Visible = false
 	MinIcon.Visible = true
-	MinIcon.Position = restorePos
+	-- Posisi icon muncul di posisi terakhir menu
+	MinIcon.Position = MainFrame.Position
 end)
 
 MinIcon.MouseButton1Click:Connect(function()
 	minimized = false
 	MinIcon.Visible = false
 	MainFrame.Visible = true
+	-- [UPDATED] Menu muncul mengikuti posisi icon terakhir di-drag
 	MainFrame.Position = MinIcon.Position
 end)
 
@@ -300,15 +306,17 @@ end)
 
 local platformEnabled = false
 local pPart, pConn, lastY = nil, nil, 0
+local platformShortcutBtn = nil -- [NEW] Variable for shortcut
+
 local noclipOn = false
 local noclipConn = nil
 local ESP = { enabled = {}, connections = {}, markers = {} }
-local fastTakeEnabled = false
+local fastInteractEnabled = false -- [UPDATED] Variable Name
 local ftConnection = nil
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
 local autoValentineEnabled = false 
-local autoDepositEnabled = false -- [NEW] Variable for Deposit
+local autoDepositEnabled = false
 local notifConfig = { Divine = false, Celestial = false, Common = false }
 local notifListeners = {}
 
@@ -323,7 +331,47 @@ local autoEquipEnabled = false
 --// LOGIC FUNCTIONS
 --=============================================================================
 
--- 1. Helper Logic: Check Item Name
+-- 1. Platform Logic (Refactored for Shortcut)
+local function togglePlatformState(state)
+	if state then
+		if not pPart then
+			pPart = Instance.new("Part", workspace)
+			pPart.Name = "DjPlatform"
+			pPart.Size = Vector3.new(15, 0.5, 15)
+			pPart.Anchored = true
+			pPart.Transparency = 0.5
+			pPart.Material = Enum.Material.ForceField
+			pPart.Color = Color3.fromRGB(0, 255, 255)
+			
+			if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+				lastY = lp.Character.HumanoidRootPart.Position.Y - 3.2
+			end
+			
+			pConn = RunService.PostSimulation:Connect(function()
+				if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+					local hrp = lp.Character.HumanoidRootPart
+					local hum = lp.Character:FindFirstChild("Humanoid")
+					if hum and hum.FloorMaterial == Enum.Material.Air then lastY = hrp.Position.Y - 3.2 end
+					pPart.CFrame = CFrame.new(hrp.Position.X, lastY, hrp.Position.Z)
+				end
+			end)
+		end
+	else
+		if pConn then pConn:Disconnect() pConn = nil end
+		if pPart then pPart:Destroy() pPart = nil end
+	end
+end
+
+-- 2. Fast Interact (Updated)
+local function applyFastInteract(prompt)
+	if prompt:IsA("ProximityPrompt") then
+		-- [UPDATED] Logic Instant (0 Hold Duration)
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 25
+	end
+end
+
+-- 3. Helper Logic: Check Item Name
 local function isTargetItem(tool, keyword)
 	if not tool:IsA("Tool") then return false end
 	if tool.ToolTip and string.find(tool.ToolTip, keyword) then return true end
@@ -332,7 +380,7 @@ local function isTargetItem(tool, keyword)
 	return false
 end
 
--- 2. ESP & Visuals
+-- 4. ESP & Visuals
 local function removeMarker(obj)
 	local data = ESP.markers[obj]
 	if data then
@@ -478,7 +526,7 @@ local function toggleItemEsp(mode, folderName)
 	end
 end
 
--- 3. Follow Player Logic
+-- 5. Follow Player Logic
 local TargetLabel -- Forward declaration
 
 local function StopFollowing()
@@ -517,7 +565,7 @@ local function StartFollowing(targetPlayer)
 	end)
 end
 
--- 4. Auto Equip Logic
+-- 6. Auto Equip Logic
 task.spawn(function()
 	while true do
 		task.wait(0.2) 
@@ -551,14 +599,7 @@ task.spawn(function()
 	end
 end)
 
--- 5. Misc Functions
-local function applyFastTake(prompt)
-	if prompt:IsA("ProximityPrompt") and prompt.Name == "TakePrompt" then
-		prompt.HoldDuration = 0
-		prompt.MaxActivationDistance = 25
-	end
-end
-
+-- 7. Notification Logic
 local function playNotifSoundAndText(rarity)
 	local sound = Instance.new("Sound")
 	sound.SoundId = "rbxassetid://8486683243"
@@ -599,35 +640,56 @@ end)
 
 CreateSection("PLAYER")
 
-CreateToggle("Platform Walk", function()
-	platformEnabled = not platformEnabled
-	if platformEnabled then
-		pPart = Instance.new("Part", workspace)
-		pPart.Name = "DjPlatform"
-		pPart.Size = Vector3.new(15, 0.5, 15)
-		pPart.Anchored = true
-		pPart.Transparency = 0.5
-		pPart.Material = Enum.Material.ForceField
-		pPart.Color = Color3.fromRGB(0, 255, 255)
-		if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-			lastY = lp.Character.HumanoidRootPart.Position.Y - 3.2
+CreateToggle("Platform Walk (w/ Shortcut)", function(toggled)
+	-- [UPDATED] Feature with Shortcut Button
+	if toggled then
+		-- Activate Platform Logic
+		togglePlatformState(true)
+		
+		-- Create Shortcut Button
+		if not platformShortcutBtn then
+			platformShortcutBtn = Instance.new("TextButton")
+			platformShortcutBtn.Name = "PlatformShortcut"
+			platformShortcutBtn.Size = UDim2.new(0, 50, 0, 50)
+			platformShortcutBtn.Position = UDim2.new(0.8, 0, 0.7, 0) -- Default Position
+			platformShortcutBtn.BackgroundColor3 = colors.shortcutOn
+			platformShortcutBtn.Text = "P-Walk"
+			platformShortcutBtn.TextColor3 = Color3.fromRGB(0,0,0)
+			platformShortcutBtn.Font = Enum.Font.GothamBold
+			platformShortcutBtn.TextSize = 10
+			platformShortcutBtn.Parent = ScreenGui
+			
+			Instance.new("UICorner", platformShortcutBtn).CornerRadius = UDim.new(1, 0)
+			Instance.new("UIStroke", platformShortcutBtn).Thickness = 2
+			
+			makeDraggable(platformShortcutBtn)
+			
+			local shortcutActive = true
+			platformShortcutBtn.MouseButton1Click:Connect(function()
+				shortcutActive = not shortcutActive
+				togglePlatformState(shortcutActive)
+				
+				if shortcutActive then
+					platformShortcutBtn.BackgroundColor3 = colors.shortcutOn
+					platformShortcutBtn.Transparency = 0
+				else
+					platformShortcutBtn.BackgroundColor3 = colors.shortcutOff
+					platformShortcutBtn.Transparency = 0.5
+				end
+			end)
 		end
-		pConn = RunService.PostSimulation:Connect(function()
-			if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-				local hrp = lp.Character.HumanoidRootPart
-				local hum = lp.Character:FindFirstChild("Humanoid")
-				if hum and hum.FloorMaterial == Enum.Material.Air then lastY = hrp.Position.Y - 3.2 end
-				pPart.CFrame = CFrame.new(hrp.Position.X, lastY, hrp.Position.Z)
-			end
-		end)
 	else
-		if pConn then pConn:Disconnect() pConn = nil end
-		if pPart then pPart:Destroy() pPart = nil end
+		-- Deactivate Platform & Remove Shortcut
+		togglePlatformState(false)
+		if platformShortcutBtn then
+			platformShortcutBtn:Destroy()
+			platformShortcutBtn = nil
+		end
 	end
 end)
 
-CreateToggle("Noclip", function()
-	noclipOn = not noclipOn
+CreateToggle("Noclip", function(toggled)
+	noclipOn = toggled
 	if noclipOn then
 		noclipConn = RunService.Stepped:Connect(function()
 			if lp.Character then
@@ -643,8 +705,8 @@ end)
 
 CreateSection("AUTO ITEMS")
 
-CreateToggle("Auto Equip Best Block", function()
-	autoEquipEnabled = not autoEquipEnabled
+CreateToggle("Auto Equip Best Block", function(toggled)
+	autoEquipEnabled = toggled
 end)
 
 CreateSection("OPTIMIZATION")
@@ -729,9 +791,9 @@ end)
 
 CreateSection("NOTIFICATIONS")
 
-CreateToggle("Notif DEVINE", function() notifConfig["Divine"] = not notifConfig["Divine"] end)
-CreateToggle("Notif CELESTIAL", function() notifConfig["Celestial"] = not notifConfig["Celestial"] end)
-CreateToggle("Notif COMMON", function() notifConfig["Common"] = not notifConfig["Common"] end)
+CreateToggle("Notif DEVINE", function(t) notifConfig["Divine"] = t end)
+CreateToggle("Notif CELESTIAL", function(t) notifConfig["Celestial"] = t end)
+CreateToggle("Notif COMMON", function(t) notifConfig["Common"] = t end)
 
 CreateSection("VISUALS (ESP)")
 
@@ -744,8 +806,8 @@ CreateSection("ARCADE EVENT")
 CreateToggle("ESP Game Console", function() toggleItemEsp("Console", "ArcadeEventConsoles") end)
 CreateToggle("ESP Ticket", function() toggleItemEsp("Ticket", "ArcadeEventTickets") end)
 
-CreateToggle("Auto Game Console", function()
-	autoConsoleEnabled = not autoConsoleEnabled
+CreateToggle("Auto Game Console", function(toggled)
+	autoConsoleEnabled = toggled
 	if autoConsoleEnabled then
 		task.spawn(function()
 			while autoConsoleEnabled do
@@ -772,8 +834,8 @@ CreateToggle("Auto Game Console", function()
 	end
 end)
 
-CreateToggle("Auto Tickets", function()
-	autoTicketEnabled = not autoTicketEnabled
+CreateToggle("Auto Tickets", function(toggled)
+	autoTicketEnabled = toggled
 	if autoTicketEnabled then
 		task.spawn(function()
 			while autoTicketEnabled do
@@ -801,13 +863,13 @@ CreateToggle("Auto Tickets", function()
 end)
 
 --=============================================================================
---// [NEW] VALENTINE EVENT
+--// VALENTINE EVENT
 --=============================================================================
 
 CreateSection("VALENTINE EVENT")
 
-CreateToggle("Auto Collect Valentine", function()
-	autoValentineEnabled = not autoValentineEnabled
+CreateToggle("Auto Collect Valentine", function(toggled)
+	autoValentineEnabled = toggled
 	if autoValentineEnabled then
 		task.spawn(function()
 			while autoValentineEnabled do
@@ -815,7 +877,6 @@ CreateToggle("Auto Collect Valentine", function()
 				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 				
 				if hrp then
-					-- Helper Function for Collection
 					local function collectPart(part)
 						if not part then return end
 						if firetouchinterest then
@@ -826,11 +887,9 @@ CreateToggle("Auto Collect Valentine", function()
 						end
 					end
 
-					-- 1. Candy Collection (CandyEventParts -> Candy1 - Candy5)
 					local candyFolder = workspace:FindFirstChild("CandyEventParts")
 					if candyFolder then
 						for _, item in pairs(candyFolder:GetChildren()) do
-							-- Matches Candy1, Candy2, Candy3, Candy4, Candy5
 							if string.match(item.Name, "Candy%d") then 
 								local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
 								collectPart(part)
@@ -838,11 +897,9 @@ CreateToggle("Auto Collect Valentine", function()
 						end
 					end
 
-					-- 2. Coin Collection (ValentinesCoinParts -> FIXED: Looping all items)
 					local coinFolder = workspace:FindFirstChild("ValentinesCoinParts")
 					if coinFolder then
 						for _, item in pairs(coinFolder:GetChildren()) do
-							-- Checks if name contains 'ValentinesCoin' or collects any item in folder
 							if string.find(item.Name, "ValentinesCoin") then
 								local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
 								collectPart(part)
@@ -855,14 +912,13 @@ CreateToggle("Auto Collect Valentine", function()
 	end
 end)
 
-CreateToggle("Auto Deposit Candy (4s)", function()
-	autoDepositEnabled = not autoDepositEnabled
+CreateToggle("Auto Deposit Candy (4s)", function(toggled)
+	autoDepositEnabled = toggled
 	if autoDepositEnabled then
 		task.spawn(function()
 			while autoDepositEnabled do
-				task.wait(4) -- Wait 4 seconds as requested
+				task.wait(4)
 				pcall(function()
-					-- Path: ValentinesMap -> CandyGramStation -> Main -> Attachment -> ProximityPrompt
 					local map = workspace:FindFirstChild("ValentinesMap")
 					if map then
 						local station = map:FindFirstChild("CandyGramStation")
@@ -887,15 +943,25 @@ end)
 
 CreateSection("MISC")
 
-CreateToggle("Fast Take", function()
-	fastTakeEnabled = not fastTakeEnabled
+CreateToggle("Fast Interact (Instant)", function(toggled)
+	-- [UPDATED] logic to Instant
+	fastInteractEnabled = toggled
 	local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
-	if not activeFolder then return end
-	if fastTakeEnabled then
-		for _, descendant in pairs(activeFolder:GetDescendants()) do applyFastTake(descendant) end
-		ftConnection = activeFolder.DescendantAdded:Connect(function(desc)
-			if desc.Name == "TakePrompt" then task.wait(0.1) applyFastTake(desc) end
-		end)
+	
+	if fastInteractEnabled then
+		if activeFolder then
+			-- Apply to existing
+			for _, descendant in pairs(activeFolder:GetDescendants()) do 
+				applyFastInteract(descendant) 
+			end
+			-- Apply to new
+			ftConnection = activeFolder.DescendantAdded:Connect(function(desc)
+				if desc:IsA("ProximityPrompt") or desc.Name == "TakePrompt" then 
+					task.wait(0.1) 
+					applyFastInteract(desc) 
+				end
+			end)
+		end
 	else
 		if ftConnection then ftConnection:Disconnect() ftConnection = nil end
 	end
@@ -906,4 +972,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Full Features + Valentine Deposit Fix) Loaded")
+print("✅ Dj Hub Remastered (GUI Updated + Shortcut + Instant Interact) Loaded")
