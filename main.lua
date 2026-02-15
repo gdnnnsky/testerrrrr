@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Smart Fast Interact (Anti-Reset) & Fixed Deposit
+--// Update: Fixedsadswdd Auto Deposit (Auto Press + Return Pos + Follow Compatible)
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -309,11 +309,12 @@ local noclipConn = nil
 local ESP = { enabled = {}, connections = {}, markers = {} }
 local fastInteractEnabled = false 
 local ftConnection = nil
-local activeInteractConnections = {} -- [NEW] To track listeners
+local activeInteractConnections = {} 
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
 local autoValentineEnabled = false 
 local autoDepositEnabled = false
+local isDepositing = false -- [NEW] Flag for pausing Follow Player
 local notifConfig = { Divine = false, Celestial = false, Common = false }
 local notifListeners = {}
 
@@ -534,6 +535,9 @@ local function StartFollowing(targetPlayer)
 	if TargetLabel then TargetLabel.Text = "Following: " .. targetPlayer.Name end
 	
 	followConnection = RunService.RenderStepped:Connect(function()
+		-- [NEW] Pause Following if Deposit is running
+		if isDepositing then return end
+
 		if followTarget and followTarget.Character and followTarget.Character:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 			local tRoot = followTarget.Character.HumanoidRootPart
 			local myRoot = lp.Character.HumanoidRootPart
@@ -910,28 +914,41 @@ CreateToggle("Auto Deposit Candy (4s)", function(toggled)
 						if station then
 							local main = station:FindFirstChild("Main")
 							if main then
-								-- [IMPROVED] Teleport & Distance Bypass
+								-- [IMPROVED] Teleport & Auto Press & Return Logic
 								if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-									lp.Character.HumanoidRootPart.CFrame = main.CFrame * CFrame.new(0, 3, 0)
-								end
-								
-								local att = main:FindFirstChild("Attachment")
-								if att then
-									local prompt = att:FindFirstChild("ProximityPrompt")
-									if prompt then
-										prompt.MaxActivationDistance = 99999 -- [IMPROVED] Bypass Distance
-										prompt.HoldDuration = 0
-										prompt.RequiresLineOfSight = false
-										
-										if fireproximityprompt then
-											fireproximityprompt(prompt)
-										else
-											-- Fallback if exploit weak
-											prompt:InputHoldBegin()
-											task.wait()
-											prompt:InputHoldEnd()
+									isDepositing = true -- Flag ON to pause Follow Player
+									
+									local hrp = lp.Character.HumanoidRootPart
+									local oldPos = hrp.CFrame -- Save Old Position
+									
+									-- 1. Teleport to Station
+									hrp.CFrame = main.CFrame * CFrame.new(0, 3, 0)
+									task.wait(0.2) -- Wait for physics to register
+									
+									local att = main:FindFirstChild("Attachment")
+									if att then
+										local prompt = att:FindFirstChild("ProximityPrompt")
+										if prompt then
+											-- 2. Force Instant & Activate
+											prompt.HoldDuration = 0
+											prompt.MaxActivationDistance = 999
+											
+											if fireproximityprompt then
+												fireproximityprompt(prompt)
+											else
+												prompt:InputHoldBegin()
+												task.wait()
+												prompt:InputHoldEnd()
+											end
 										end
 									end
+									
+									task.wait(0.2) -- Small delay after press
+									
+									-- 3. Return to Old Position
+									hrp.CFrame = oldPos
+									
+									isDepositing = false -- Flag OFF to resume Follow Player
 								end
 							end
 						end
@@ -945,33 +962,32 @@ end)
 CreateSection("MISC")
 
 CreateToggle("Fast Interact (Global)", function(toggled)
+	-- [UPDATED] Smart Listener (No Loop, High Performance)
 	fastInteractEnabled = toggled
 	
-	if fastInteractEnabled then
-		-- Logic: Apply Instant & Listener to enforce it
-		local function enforceInstant(prompt)
-			-- Set initial
-			prompt.HoldDuration = 0
-			
-			-- Listen if game changes it back
-			if not activeInteractConnections[prompt] then
-				activeInteractConnections[prompt] = prompt:GetPropertyChangedSignal("HoldDuration"):Connect(function()
-					if fastInteractEnabled and prompt.HoldDuration > 0 then
-						prompt.HoldDuration = 0
-					end
-				end)
-			end
+	local function makeInstant(prompt)
+		prompt.HoldDuration = 0
+		
+		-- Add listener to detect reset (Anti-Reset Logic)
+		if not activeInteractConnections[prompt] then
+			activeInteractConnections[prompt] = prompt:GetPropertyChangedSignal("HoldDuration"):Connect(function()
+				if fastInteractEnabled and prompt.HoldDuration > 0 then
+					prompt.HoldDuration = 0 -- Re-apply instantly if game changes it
+				end
+			end)
 		end
+	end
 
-		-- 1. Apply to all existing
+	if fastInteractEnabled then
+		-- 1. Apply to existing
 		for _, v in pairs(workspace:GetDescendants()) do
 			if v:IsA("ProximityPrompt") then
-				enforceInstant(v)
+				makeInstant(v)
 			end
 		end
 		
 		-- 2. Listen for new prompts
-		ftConnection = ProximityPromptService.PromptAdded:Connect(enforceInstant)
+		ftConnection = ProximityPromptService.PromptAdded:Connect(makeInstant)
 	else
 		-- Cleanup
 		if ftConnection then ftConnection:Disconnect() ftConnection = nil end
@@ -987,4 +1003,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Smart Anti-Reset Fast Interact) Loaded")
+print("✅ Dj Hub Remastered (Smart Anti-Reset Fast Interact + Return Deposit) Loaded")
