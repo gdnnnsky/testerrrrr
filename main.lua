@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Upwdsawwwwdate: Resized GUI, Transparent BG, Draggable Minimized, Platform Shortcut, Instant Fast Interact
+--// Update: Global Fast Interact (All Prompts), Fixed Auto Deposit
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 local SoundService = game:GetService("SoundService")
 local Lighting = game:GetService("Lighting")
+local ProximityPromptService = game:GetService("ProximityPromptService") -- Service baru untuk Fast Interact Global
 
 local lp = Players.LocalPlayer
 
@@ -95,10 +96,8 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
--- [UPDATED] Ukuran diperkecil agar tidak memenuhi layar
 MainFrame.Size = UDim2.new(0, 360, 0, 400) 
 MainFrame.Position = UDim2.new(0.5, -180, 0.5, -200)
--- [UPDATED] Lebih transparan
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.35 
 MainFrame.BorderSizePixel = 0
@@ -277,14 +276,12 @@ Instance.new("UIStroke", MinIcon).Color = colors.accent
 Instance.new("UIStroke", MinIcon).Thickness = 2
 Instance.new("UIStroke", MinIcon).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
--- [UPDATED] Minimized Icon is Draggable
 makeDraggable(MinIcon)
 
 MinBtn.MouseButton1Click:Connect(function()
 	minimized = true
 	MainFrame.Visible = false
 	MinIcon.Visible = true
-	-- Posisi icon muncul di posisi terakhir menu
 	MinIcon.Position = MainFrame.Position
 end)
 
@@ -292,7 +289,6 @@ MinIcon.MouseButton1Click:Connect(function()
 	minimized = false
 	MinIcon.Visible = false
 	MainFrame.Visible = true
-	-- [UPDATED] Menu muncul mengikuti posisi icon terakhir di-drag
 	MainFrame.Position = MinIcon.Position
 end)
 
@@ -306,12 +302,12 @@ end)
 
 local platformEnabled = false
 local pPart, pConn, lastY = nil, nil, 0
-local platformShortcutBtn = nil -- [NEW] Variable for shortcut
+local platformShortcutBtn = nil 
 
 local noclipOn = false
 local noclipConn = nil
 local ESP = { enabled = {}, connections = {}, markers = {} }
-local fastInteractEnabled = false -- [UPDATED] Variable Name
+local fastInteractEnabled = false 
 local ftConnection = nil
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
@@ -331,7 +327,7 @@ local autoEquipEnabled = false
 --// LOGIC FUNCTIONS
 --=============================================================================
 
--- 1. Platform Logic (Refactored for Shortcut)
+-- 1. Platform Logic 
 local function togglePlatformState(state)
 	if state then
 		if not pPart then
@@ -362,16 +358,7 @@ local function togglePlatformState(state)
 	end
 end
 
--- 2. Fast Interact (Updated)
-local function applyFastInteract(prompt)
-	if prompt:IsA("ProximityPrompt") then
-		-- [UPDATED] Logic Instant (0 Hold Duration)
-		prompt.HoldDuration = 0
-		prompt.MaxActivationDistance = 25
-	end
-end
-
--- 3. Helper Logic: Check Item Name
+-- 2. Helper Logic: Check Item Name
 local function isTargetItem(tool, keyword)
 	if not tool:IsA("Tool") then return false end
 	if tool.ToolTip and string.find(tool.ToolTip, keyword) then return true end
@@ -380,7 +367,7 @@ local function isTargetItem(tool, keyword)
 	return false
 end
 
--- 4. ESP & Visuals
+-- 3. ESP & Visuals
 local function removeMarker(obj)
 	local data = ESP.markers[obj]
 	if data then
@@ -526,7 +513,7 @@ local function toggleItemEsp(mode, folderName)
 	end
 end
 
--- 5. Follow Player Logic
+-- 4. Follow Player Logic
 local TargetLabel -- Forward declaration
 
 local function StopFollowing()
@@ -565,7 +552,7 @@ local function StartFollowing(targetPlayer)
 	end)
 end
 
--- 6. Auto Equip Logic
+-- 5. Auto Equip Logic
 task.spawn(function()
 	while true do
 		task.wait(0.2) 
@@ -599,7 +586,7 @@ task.spawn(function()
 	end
 end)
 
--- 7. Notification Logic
+-- 6. Notification Logic
 local function playNotifSoundAndText(rarity)
 	local sound = Instance.new("Sound")
 	sound.SoundId = "rbxassetid://8486683243"
@@ -641,17 +628,14 @@ end)
 CreateSection("PLAYER")
 
 CreateToggle("Platform Walk (w/ Shortcut)", function(toggled)
-	-- [UPDATED] Feature with Shortcut Button
 	if toggled then
-		-- Activate Platform Logic
 		togglePlatformState(true)
 		
-		-- Create Shortcut Button
 		if not platformShortcutBtn then
 			platformShortcutBtn = Instance.new("TextButton")
 			platformShortcutBtn.Name = "PlatformShortcut"
 			platformShortcutBtn.Size = UDim2.new(0, 50, 0, 50)
-			platformShortcutBtn.Position = UDim2.new(0.8, 0, 0.7, 0) -- Default Position
+			platformShortcutBtn.Position = UDim2.new(0.8, 0, 0.7, 0)
 			platformShortcutBtn.BackgroundColor3 = colors.shortcutOn
 			platformShortcutBtn.Text = "P-Walk"
 			platformShortcutBtn.TextColor3 = Color3.fromRGB(0,0,0)
@@ -679,7 +663,6 @@ CreateToggle("Platform Walk (w/ Shortcut)", function(toggled)
 			end)
 		end
 	else
-		-- Deactivate Platform & Remove Shortcut
 		togglePlatformState(false)
 		if platformShortcutBtn then
 			platformShortcutBtn:Destroy()
@@ -919,6 +902,7 @@ CreateToggle("Auto Deposit Candy (4s)", function(toggled)
 			while autoDepositEnabled do
 				task.wait(4)
 				pcall(function()
+					-- Path: ValentinesMap -> CandyGramStation -> Main -> Attachment -> ProximityPrompt
 					local map = workspace:FindFirstChild("ValentinesMap")
 					if map then
 						local station = map:FindFirstChild("CandyGramStation")
@@ -929,7 +913,18 @@ CreateToggle("Auto Deposit Candy (4s)", function(toggled)
 								if att then
 									local prompt = att:FindFirstChild("ProximityPrompt")
 									if prompt then
-										fireproximityprompt(prompt)
+										if fireproximityprompt then
+											fireproximityprompt(prompt)
+										else
+											-- Fallback logic: move character to prompt if exploit doesn't support fireproximityprompt
+											if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+												lp.Character.HumanoidRootPart.CFrame = main.CFrame
+												task.wait(0.2)
+												prompt:InputHoldBegin()
+												task.wait()
+												prompt:InputHoldEnd()
+											end
+										end
 									end
 								end
 							end
@@ -943,25 +938,22 @@ end)
 
 CreateSection("MISC")
 
-CreateToggle("Fast Interact (Instant)", function(toggled)
-	-- [UPDATED] logic to Instant
+CreateToggle("Fast Interact (Global)", function(toggled)
+	-- [UPDATED] Global Fast Interact Logic
 	fastInteractEnabled = toggled
-	local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
 	
 	if fastInteractEnabled then
-		if activeFolder then
-			-- Apply to existing
-			for _, descendant in pairs(activeFolder:GetDescendants()) do 
-				applyFastInteract(descendant) 
+		-- Apply to ALL existing prompts in game
+		for _, v in pairs(workspace:GetDescendants()) do
+			if v:IsA("ProximityPrompt") then
+				v.HoldDuration = 0
 			end
-			-- Apply to new
-			ftConnection = activeFolder.DescendantAdded:Connect(function(desc)
-				if desc:IsA("ProximityPrompt") or desc.Name == "TakePrompt" then 
-					task.wait(0.1) 
-					applyFastInteract(desc) 
-				end
-			end)
 		end
+		
+		-- Listen for NEW prompts globally
+		ftConnection = ProximityPromptService.PromptAdded:Connect(function(prompt)
+			prompt.HoldDuration = 0
+		end)
 	else
 		if ftConnection then ftConnection:Disconnect() ftConnection = nil end
 	end
@@ -972,4 +964,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (GUI Updated + Shortcut + Instant Interact) Loaded")
+print("✅ Dj Hub Remastered (Global Fast Interact + Auto Deposit Fixed) Loaded")
