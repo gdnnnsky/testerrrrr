@@ -1,5 +1,5 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
---// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag+
+--// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -92,7 +92,7 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 420) -- Diperpanjang untuk section baru
+MainFrame.Size = UDim2.new(0, 450, 0, 450) -- Sedikit diperbesar untuk menu baru
 MainFrame.Position = UDim2.new(0.5, -225, 0.5, -210)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.15 
@@ -307,6 +307,7 @@ local fastTakeEnabled = false
 local ftConnection = nil
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
+local autoValentineEnabled = false -- [NEW] Variable for Valentine
 local notifConfig = { Divine = false, Celestial = false, Common = false }
 local notifListeners = {}
 
@@ -798,6 +799,59 @@ CreateToggle("Auto Tickets", function()
 	end
 end)
 
+--=============================================================================
+--// [NEW] VALENTINE EVENT
+--=============================================================================
+
+CreateSection("VALENTINE EVENT")
+
+CreateToggle("Auto Collect Valentine", function()
+	autoValentineEnabled = not autoValentineEnabled
+	if autoValentineEnabled then
+		task.spawn(function()
+			while autoValentineEnabled do
+				task.wait(0.2)
+				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+				
+				if hrp then
+					-- Helper Function for Collection
+					local function collectPart(part)
+						if not part then return end
+						if firetouchinterest then
+							firetouchinterest(hrp, part, 0)
+							firetouchinterest(hrp, part, 1)
+						else
+							part.CFrame = hrp.CFrame
+						end
+					end
+
+					-- 1. Candy Collection (CandyEventParts -> Candy1 - Candy5)
+					local candyFolder = workspace:FindFirstChild("CandyEventParts")
+					if candyFolder then
+						for _, item in pairs(candyFolder:GetChildren()) do
+							-- Matches Candy1, Candy2, Candy3, Candy4, Candy5
+							if string.match(item.Name, "Candy%d") then 
+								local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
+								collectPart(part)
+							end
+						end
+					end
+
+					-- 2. Coin Collection (ValentinesCoinParts -> ValentinesCoin)
+					local coinFolder = workspace:FindFirstChild("ValentinesCoinParts")
+					if coinFolder then
+						local coinModel = coinFolder:FindFirstChild("ValentinesCoin")
+						if coinModel then
+							local part = coinModel:IsA("BasePart") and coinModel or coinModel:FindFirstChildWhichIsA("BasePart")
+							collectPart(part)
+						end
+					end
+				end
+			end
+		end)
+	end
+end)
+
 CreateSection("MISC")
 
 CreateToggle("Fast Take", function()
@@ -819,4 +873,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Full Features) Loaded")
+print("✅ Dj Hub Remastered (Full Features + Valentine Update) Loaded")
