@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Fixedsadswdd Auto Deposit (Auto Press + Return Pos + Follow Compatible)
+--// Update: Smart Deposit (Trigger by Text Error) + Fix Interact
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -314,7 +314,7 @@ local autoConsoleEnabled = false
 local autoTicketEnabled = false
 local autoValentineEnabled = false 
 local autoDepositEnabled = false
-local isDepositing = false -- [NEW] Flag for pausing Follow Player
+local isDepositing = false 
 local notifConfig = { Divine = false, Celestial = false, Common = false }
 local notifListeners = {}
 
@@ -900,60 +900,90 @@ CreateToggle("Auto Collect Valentine", function(toggled)
 	end
 end)
 
-CreateToggle("Auto Deposit Candy (4s)", function(toggled)
+CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 	autoDepositEnabled = toggled
-	if autoDepositEnabled then
-		task.spawn(function()
-			while autoDepositEnabled do
-				task.wait(4)
-				pcall(function()
-					-- Path: ValentinesMap -> CandyGramStation -> Main -> Attachment -> ProximityPrompt
-					local map = workspace:FindFirstChild("ValentinesMap")
-					if map then
-						local station = map:FindFirstChild("CandyGramStation")
-						if station then
-							local main = station:FindFirstChild("Main")
-							if main then
-								-- [IMPROVED] Teleport & Auto Press & Return Logic
-								if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-									isDepositing = true -- Flag ON to pause Follow Player
-									
-									local hrp = lp.Character.HumanoidRootPart
-									local oldPos = hrp.CFrame -- Save Old Position
-									
-									-- 1. Teleport to Station
-									hrp.CFrame = main.CFrame * CFrame.new(0, 3, 0)
-									task.wait(0.2) -- Wait for physics to register
-									
-									local att = main:FindFirstChild("Attachment")
-									if att then
-										local prompt = att:FindFirstChild("ProximityPrompt")
-										if prompt then
-											-- 2. Force Instant & Activate
-											prompt.HoldDuration = 0
-											prompt.MaxActivationDistance = 999
-											
-											if fireproximityprompt then
-												fireproximityprompt(prompt)
-											else
-												prompt:InputHoldBegin()
-												task.wait()
-												prompt:InputHoldEnd()
-											end
-										end
+	
+	-- Helper Function for Deposit
+	local function performDeposit()
+		if isDepositing then return end
+		isDepositing = true -- Flag ON to pause Follow Player
+		
+		-- Path: ValentinesMap -> CandyGramStation -> Main -> Attachment -> ProximityPrompt
+		local map = workspace:FindFirstChild("ValentinesMap")
+		if map then
+			local station = map:FindFirstChild("CandyGramStation")
+			if station then
+				local main = station:FindFirstChild("Main")
+				if main then
+					if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+						local hrp = lp.Character.HumanoidRootPart
+						local oldPos = hrp.CFrame -- Save Old Position
+						
+						-- 1. Teleport to Station
+						hrp.CFrame = main.CFrame * CFrame.new(0, 3, 0)
+						task.wait(0.3) -- Tunggu sebentar biar load
+						
+						local att = main:FindFirstChild("Attachment")
+						if att then
+							local prompt = att:FindFirstChild("ProximityPrompt")
+							if prompt then
+								-- 2. Force Instant & Activate
+								prompt.MaxActivationDistance = 999
+								prompt.HoldDuration = 0
+								
+								-- Spam firing to ensure register
+								for i = 1, 5 do
+									if fireproximityprompt then
+										fireproximityprompt(prompt)
+									else
+										prompt:InputHoldBegin()
+										task.wait()
+										prompt:InputHoldEnd()
 									end
-									
-									task.wait(0.2) -- Small delay after press
-									
-									-- 3. Return to Old Position
-									hrp.CFrame = oldPos
-									
-									isDepositing = false -- Flag OFF to resume Follow Player
+									task.wait(0.1)
 								end
 							end
 						end
+						
+						task.wait(0.2) -- Delay after press
+						
+						-- 3. Return to Old Position
+						if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+							lp.Character.HumanoidRootPart.CFrame = oldPos
+						end
 					end
-				end)
+				end
+			end
+		end
+		isDepositing = false -- Flag OFF
+	end
+
+	-- Listener Loop
+	if autoDepositEnabled then
+		task.spawn(function()
+			while autoDepositEnabled do
+				local triggerFound = false
+				
+				-- Check for Text Notification
+				local pGui = lp:FindFirstChild("PlayerGui")
+				if pGui then
+					-- Scan descendants for the specific text
+					for _, v in pairs(pGui:GetDescendants()) do
+						if v:IsA("TextLabel") and v.Visible then
+							if string.find(v.Text, "submit your current candies") then
+								triggerFound = true
+								break
+							end
+						end
+					end
+				end
+				
+				if triggerFound then
+					performDeposit()
+					task.wait(2) -- Cooldown after deposit to prevent spam loop
+				end
+				
+				task.wait(0.5) -- Check UI every 0.5s
 			end
 		end)
 	end
@@ -962,12 +992,10 @@ end)
 CreateSection("MISC")
 
 CreateToggle("Fast Interact (Global)", function(toggled)
-	-- [UPDATED] Smart Listener (No Loop, High Performance)
 	fastInteractEnabled = toggled
 	
 	local function makeInstant(prompt)
 		prompt.HoldDuration = 0
-		
 		-- Add listener to detect reset (Anti-Reset Logic)
 		if not activeInteractConnections[prompt] then
 			activeInteractConnections[prompt] = prompt:GetPropertyChangedSignal("HoldDuration"):Connect(function()
@@ -1003,4 +1031,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Smart Anti-Reset Fast Interact + Return Deposit) Loaded")
+print("✅ Dj Hub Remastered (Smart Text Trigger Deposit) Loaded")
