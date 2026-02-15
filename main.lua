@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Global Fast Interact (All Prompts), Fixed Auto Deposit
+--// Update: Fixed Global Fast Interact Loop & Improved Auto Deposit Logic
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -9,7 +9,7 @@ local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 local SoundService = game:GetService("SoundService")
 local Lighting = game:GetService("Lighting")
-local ProximityPromptService = game:GetService("ProximityPromptService") -- Service baru untuk Fast Interact Global
+local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local lp = Players.LocalPlayer
 
@@ -909,21 +909,26 @@ CreateToggle("Auto Deposit Candy (4s)", function(toggled)
 						if station then
 							local main = station:FindFirstChild("Main")
 							if main then
+								-- [IMPROVED] Teleport & Distance Bypass
+								if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+									lp.Character.HumanoidRootPart.CFrame = main.CFrame * CFrame.new(0, 3, 0)
+								end
+								
 								local att = main:FindFirstChild("Attachment")
 								if att then
 									local prompt = att:FindFirstChild("ProximityPrompt")
 									if prompt then
+										prompt.MaxActivationDistance = 99999 -- [IMPROVED] Bypass Distance
+										prompt.HoldDuration = 0
+										prompt.RequiresLineOfSight = false
+										
 										if fireproximityprompt then
 											fireproximityprompt(prompt)
 										else
-											-- Fallback logic: move character to prompt if exploit doesn't support fireproximityprompt
-											if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-												lp.Character.HumanoidRootPart.CFrame = main.CFrame
-												task.wait(0.2)
-												prompt:InputHoldBegin()
-												task.wait()
-												prompt:InputHoldEnd()
-											end
+											-- Fallback if exploit weak
+											prompt:InputHoldBegin()
+											task.wait()
+											prompt:InputHoldEnd()
 										end
 									end
 								end
@@ -939,23 +944,21 @@ end)
 CreateSection("MISC")
 
 CreateToggle("Fast Interact (Global)", function(toggled)
-	-- [UPDATED] Global Fast Interact Logic
+	-- [UPDATED] Constant Loop Logic (Fixes reset issue)
 	fastInteractEnabled = toggled
 	
 	if fastInteractEnabled then
-		-- Apply to ALL existing prompts in game
-		for _, v in pairs(workspace:GetDescendants()) do
-			if v:IsA("ProximityPrompt") then
-				v.HoldDuration = 0
+		task.spawn(function()
+			while fastInteractEnabled do
+				-- Force set 0 every 0.1s to prevent game resetting it
+				for _, prompt in pairs(ProximityPromptService:GetPrompts()) do
+					if prompt.HoldDuration ~= 0 then
+						prompt.HoldDuration = 0
+					end
+				end
+				task.wait(0.1)
 			end
-		end
-		
-		-- Listen for NEW prompts globally
-		ftConnection = ProximityPromptService.PromptAdded:Connect(function(prompt)
-			prompt.HoldDuration = 0
 		end)
-	else
-		if ftConnection then ftConnection:Disconnect() ftConnection = nil end
 	end
 end)
 
@@ -964,4 +967,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Global Fast Interact + Auto Deposit Fixed) Loaded")
+print("✅ Dj Hub Remastered (Loop Fast Interact + Teleport Deposit) Loaded")
