@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Fixed Deposit Path (Main -> Prompts) & Auto Anchor
+--// Update: Long Range Brainrot & Fixed Deposit Timing
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -308,8 +308,10 @@ local noclipOn = false
 local noclipConn = nil
 local ESP = { enabled = {}, connections = {}, markers = {} }
 local fastInteractEnabled = false 
+local longRangeBrainrotEnabled = false -- [NEW] Variable
 local ftConnection = nil
 local activeInteractConnections = {} 
+local activeLongRangeConnections = {} -- [NEW] Tracker
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
 local autoValentineEnabled = false 
@@ -697,6 +699,53 @@ CreateToggle("Auto Equip Best Block", function(toggled)
 	autoEquipEnabled = toggled
 end)
 
+CreateToggle("Long Range Brainrot Take", function(toggled)
+	-- [NEW FEATURE] Long Range Take for Brainrots
+	longRangeBrainrotEnabled = toggled
+	
+	local function applyLongRange(obj)
+		-- Check structure: RenderedBrainrot -> Root -> TakePrompt
+		local root = obj:FindFirstChild("Root")
+		if root then
+			local prompt = root:FindFirstChild("TakePrompt")
+			if prompt and prompt:IsA("ProximityPrompt") then
+				if longRangeBrainrotEnabled then
+					prompt.MaxActivationDistance = 100 -- Jarak Jauh
+					prompt.RequiresLineOfSight = false -- Tembus Tembok
+					prompt.HoldDuration = 0 -- Instant
+				else
+					-- Reset to default if disabled (approximate)
+					prompt.MaxActivationDistance = 10 
+					prompt.RequiresLineOfSight = true
+				end
+			end
+		end
+	end
+
+	local function setupListener(category)
+		local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild(category)
+		if folder then
+			-- Apply to existing
+			for _, v in pairs(folder:GetChildren()) do
+				applyLongRange(v)
+			end
+			-- Listen for new
+			if not activeLongRangeConnections[category] then
+				activeLongRangeConnections[category] = folder.ChildAdded:Connect(applyLongRange)
+			end
+		end
+	end
+
+	if longRangeBrainrotEnabled then
+		setupListener("Common")
+		setupListener("Divine")
+		setupListener("Celestial")
+	else
+		for _, conn in pairs(activeLongRangeConnections) do conn:Disconnect() end
+		activeLongRangeConnections = {}
+	end
+end)
+
 CreateSection("OPTIMIZATION")
 
 CreateButton("Reduce Lag+ (Delete Maps)", function()
@@ -921,12 +970,12 @@ CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 						
 						-- 1. Teleport to Station (Slightly above Main)
 						hrp.CFrame = main.CFrame * CFrame.new(0, 4, 0)
-						hrp.Anchored = true -- [FIX] Anchor to ensure interactions
+						hrp.Anchored = true -- Anchor to ensure interactions
 						
-						-- [FIX] Wait for physics to sync/settle
+						-- Wait for physics to sync/settle
 						task.wait(0.5) 
 						
-						local prompts = main:FindFirstChild("Prompts") -- [FIXED PATH]
+						local prompts = main:FindFirstChild("Prompts") -- Correct Path
 						if prompts then
 							local prompt = prompts:FindFirstChild("ProximityPrompt")
 							if prompt then
@@ -935,8 +984,8 @@ CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 								prompt.HoldDuration = 0
 								prompt.RequiresLineOfSight = false
 								
-								-- Spam firing to ensure register
-								for i = 1, 3 do
+								-- Spam firing to ensure register (10x Loop)
+								for i = 1, 10 do
 									if fireproximityprompt then
 										fireproximityprompt(prompt)
 									end
@@ -949,11 +998,12 @@ CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 							end
 						end
 						
-						task.wait(0.5) -- Delay after press before returning
+						-- [IMPORTANT] Wait AFTER interaction before returning (biar server proses deposit)
+						task.wait(1.5) 
 						
 						-- 3. Return to Old Position
 						if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-							lp.Character.HumanoidRootPart.Anchored = false -- [FIX] Unanchor
+							lp.Character.HumanoidRootPart.Anchored = false -- Unanchor
 							lp.Character.HumanoidRootPart.CFrame = oldPos
 						end
 					end
@@ -1036,4 +1086,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Correct Path Prompts & Auto Anchor) Loaded")
+print("✅ Dj Hub Remastered (Long Range Brainrot + Fixed Deposit Timing) Loaded")
