@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Smart Deposit (Trigger by Text Error) + Fix Interact
+--// Update: Fixedsssssssssssssssssss Deposit Path (Inside Attachment) & Added Interaction Delay
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -919,33 +919,36 @@ CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 						local hrp = lp.Character.HumanoidRootPart
 						local oldPos = hrp.CFrame -- Save Old Position
 						
-						-- 1. Teleport to Station
-						hrp.CFrame = main.CFrame * CFrame.new(0, 3, 0)
-						task.wait(0.3) -- Tunggu sebentar biar load
+						-- 1. Teleport to Station (Slightly above Main)
+						hrp.CFrame = main.CFrame * CFrame.new(0, 4, 0)
+						
+						-- [FIX] Wait for physics to sync/settle
+						task.wait(0.5) 
 						
 						local att = main:FindFirstChild("Attachment")
 						if att then
 							local prompt = att:FindFirstChild("ProximityPrompt")
 							if prompt then
 								-- 2. Force Instant & Activate
-								prompt.MaxActivationDistance = 999
+								prompt.MaxActivationDistance = 9999
 								prompt.HoldDuration = 0
 								
 								-- Spam firing to ensure register
-								for i = 1, 5 do
+								-- Using both methods for compatibility
+								for i = 1, 3 do
 									if fireproximityprompt then
 										fireproximityprompt(prompt)
-									else
-										prompt:InputHoldBegin()
-										task.wait()
-										prompt:InputHoldEnd()
 									end
+									-- Native fallback
+									prompt:InputHoldBegin()
+									task.wait()
+									prompt:InputHoldEnd()
 									task.wait(0.1)
 								end
 							end
 						end
 						
-						task.wait(0.2) -- Delay after press
+						task.wait(0.5) -- Delay after press before returning
 						
 						-- 3. Return to Old Position
 						if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
@@ -1031,4 +1034,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Smart Text Trigger Deposit) Loaded")
+print("✅ Dj Hub Remastered (Fixed Deposit Path & Timing) Loaded")
