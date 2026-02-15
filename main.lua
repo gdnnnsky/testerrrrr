@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Fixed Global Fast Interact Loop & Improved Auto Deposit Logic
+--// Update: Smart Fast Interact (Anti-Reset) & Fixed Deposit
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -309,6 +309,7 @@ local noclipConn = nil
 local ESP = { enabled = {}, connections = {}, markers = {} }
 local fastInteractEnabled = false 
 local ftConnection = nil
+local activeInteractConnections = {} -- [NEW] To track listeners
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
 local autoValentineEnabled = false 
@@ -944,21 +945,40 @@ end)
 CreateSection("MISC")
 
 CreateToggle("Fast Interact (Global)", function(toggled)
-	-- [UPDATED] Constant Loop Logic (Fixes reset issue)
 	fastInteractEnabled = toggled
 	
 	if fastInteractEnabled then
-		task.spawn(function()
-			while fastInteractEnabled do
-				-- Force set 0 every 0.1s to prevent game resetting it
-				for _, prompt in pairs(ProximityPromptService:GetPrompts()) do
-					if prompt.HoldDuration ~= 0 then
+		-- Logic: Apply Instant & Listener to enforce it
+		local function enforceInstant(prompt)
+			-- Set initial
+			prompt.HoldDuration = 0
+			
+			-- Listen if game changes it back
+			if not activeInteractConnections[prompt] then
+				activeInteractConnections[prompt] = prompt:GetPropertyChangedSignal("HoldDuration"):Connect(function()
+					if fastInteractEnabled and prompt.HoldDuration > 0 then
 						prompt.HoldDuration = 0
 					end
-				end
-				task.wait(0.1)
+				end)
 			end
-		end)
+		end
+
+		-- 1. Apply to all existing
+		for _, v in pairs(workspace:GetDescendants()) do
+			if v:IsA("ProximityPrompt") then
+				enforceInstant(v)
+			end
+		end
+		
+		-- 2. Listen for new prompts
+		ftConnection = ProximityPromptService.PromptAdded:Connect(enforceInstant)
+	else
+		-- Cleanup
+		if ftConnection then ftConnection:Disconnect() ftConnection = nil end
+		for _, conn in pairs(activeInteractConnections) do
+			conn:Disconnect()
+		end
+		activeInteractConnections = {}
 	end
 end)
 
@@ -967,4 +987,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Loop Fast Interact + Teleport Deposit) Loaded")
+print("✅ Dj Hub Remastered (Smart Anti-Reset Fast Interact) Loaded")
