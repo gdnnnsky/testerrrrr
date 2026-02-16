@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Sky Walk Logic + Arcade Ticket & Common Brainrot Test
+--// Update: Underground Mode (-10 Studs) + Unlimited Zoom/Clip Camera
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -96,7 +96,7 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 360, 0, 450) -- Height adjusted for new features
+MainFrame.Size = UDim2.new(0, 360, 0, 480) -- Height adjusted
 MainFrame.Position = UDim2.new(0.5, -180, 0.5, -200)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.35 
@@ -315,11 +315,11 @@ local activeLongRangeConnections = {}
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
 
--- [NEW] Sky Walk Variables
+-- [NEW] Underground Mode Variables
 local autoClaimTicketEnabled = false 
 local autoTestCommonEnabled = false
-local skyWalkPlatform = nil
-local skyWalkConnection = nil
+local undergroundPlatform = nil
+local undergroundConnection = nil
 
 local autoValentineEnabled = false 
 local autoDepositEnabled = false
@@ -369,36 +369,36 @@ local function togglePlatformState(state)
 	end
 end
 
--- [NEW] Special Sky Platform Logic (For Ticket & Test)
-local function toggleSkyPlatform(state)
+-- [NEW] Special Underground Platform Logic (-10 Studs)
+local function toggleUndergroundPlatform(state)
 	if state then
-		-- 1. Lift Player 80 Studs Up (Initial Lift)
+		-- 1. Lower Player 10 Studs Down (Initial Teleport)
 		if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 			local hrp = lp.Character.HumanoidRootPart
-			hrp.CFrame = hrp.CFrame * CFrame.new(0, 80, 0)
+			hrp.CFrame = hrp.CFrame * CFrame.new(0, -10, 0)
 		end
 		
-		-- 2. Create Platform that stays under feet
-		if not skyWalkPlatform then
-			skyWalkPlatform = Instance.new("Part", workspace)
-			skyWalkPlatform.Name = "DjSkyPlatform"
-			skyWalkPlatform.Size = Vector3.new(15, 1, 15)
-			skyWalkPlatform.Anchored = true
-			skyWalkPlatform.Transparency = 0.5
-			skyWalkPlatform.Material = Enum.Material.Neon
-			skyWalkPlatform.Color = Color3.fromRGB(255, 120, 30) -- Orange for Special Mode
+		-- 2. Create Platform that stays under feet (In Underground)
+		if not undergroundPlatform then
+			undergroundPlatform = Instance.new("Part", workspace)
+			undergroundPlatform.Name = "DjUndergroundPlatform"
+			undergroundPlatform.Size = Vector3.new(15, 1, 15)
+			undergroundPlatform.Anchored = true
+			undergroundPlatform.Transparency = 0.5
+			undergroundPlatform.Material = Enum.Material.Neon
+			undergroundPlatform.Color = Color3.fromRGB(150, 0, 0) -- Dark Red for Underground
 			
-			skyWalkConnection = RunService.Heartbeat:Connect(function()
+			undergroundConnection = RunService.Heartbeat:Connect(function()
 				if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 					local hrp = lp.Character.HumanoidRootPart
 					-- Platform selalu menempel di bawah kaki (offset dikit biar berdiri pas)
-					skyWalkPlatform.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y - 3.5, hrp.Position.Z)
+					undergroundPlatform.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y - 3.5, hrp.Position.Z)
 				end
 			end)
 		end
 	else
-		if skyWalkConnection then skyWalkConnection:Disconnect() skyWalkConnection = nil end
-		if skyWalkPlatform then skyWalkPlatform:Destroy() skyWalkPlatform = nil end
+		if undergroundConnection then undergroundConnection:Disconnect() undergroundConnection = nil end
+		if undergroundPlatform then undergroundPlatform:Destroy() undergroundPlatform = nil end
 	end
 end
 
@@ -939,10 +939,10 @@ CreateToggle("Auto Tickets (Legacy)", function(toggled)
 	end
 end)
 
--- [NEW] Auto Claim Ticket (Sky Walk Mode)
-CreateToggle("Auto Claim Ticket (Sky Walk)", function(toggled)
+-- [NEW] Auto Claim Ticket (Underground Mode)
+CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	autoClaimTicketEnabled = toggled
-	toggleSkyPlatform(toggled) -- Aktifkan Platform di bawah kaki
+	toggleUndergroundPlatform(toggled) -- Aktifkan Platform Bawah Tanah
 	
 	if autoClaimTicketEnabled then
 		task.spawn(function()
@@ -955,9 +955,9 @@ CreateToggle("Auto Claim Ticket (Sky Walk)", function(toggled)
 					for _, model in pairs(folder:GetChildren()) do
 						if model.Name == "Ticket" and model:FindFirstChild("Ticket") then
 							local part = model.Ticket
-							-- Teleport ke atas tiket + 80 Studs (Platform akan ikut otomatis krn logic toggleSkyPlatform)
+							-- Teleport ke BAWAH tiket -10 Studs (Underground)
 							local targetPos = part.Position
-							hrp.CFrame = CFrame.new(targetPos.X, targetPos.Y + 80, targetPos.Z)
+							hrp.CFrame = CFrame.new(targetPos.X, targetPos.Y - 10, targetPos.Z)
 							
 							-- Stop momentum
 							hrp.AssemblyLinearVelocity = Vector3.zero
@@ -980,10 +980,10 @@ CreateToggle("Auto Claim Ticket (Sky Walk)", function(toggled)
 	end
 end)
 
--- [NEW] TEST FEATURE: Common Brainrot Sky Walk
-CreateToggle("TEST Sky Walk (Common Brainrot)", function(toggled)
+-- [NEW] TEST FEATURE: Common Brainrot Underground
+CreateToggle("TEST Underground (Common Brainrot)", function(toggled)
 	autoTestCommonEnabled = toggled
-	toggleSkyPlatform(toggled) -- Gunakan logic platform yang sama
+	toggleUndergroundPlatform(toggled) -- Gunakan logic platform underground yang sama
 	
 	if autoTestCommonEnabled then
 		task.spawn(function()
@@ -998,9 +998,9 @@ CreateToggle("TEST Sky Walk (Common Brainrot)", function(toggled)
 						-- Pastikan ada Root part
 						local root = model:FindFirstChild("Root")
 						if root then
-							-- Teleport ke atas Brainrot + 80 Studs
+							-- Teleport ke BAWAH Brainrot -10 Studs
 							local targetPos = root.Position
-							hrp.CFrame = CFrame.new(targetPos.X, targetPos.Y + 80, targetPos.Z)
+							hrp.CFrame = CFrame.new(targetPos.X, targetPos.Y - 10, targetPos.Z)
 							
 							hrp.AssemblyLinearVelocity = Vector3.zero
 							hrp.AssemblyAngularVelocity = Vector3.zero
@@ -1201,9 +1201,20 @@ CreateToggle("Fast Interact (Global)", function(toggled)
 	end
 end)
 
+CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
+	if toggled then
+		lp.CameraMaxZoomDistance = 100000 -- Unlimited Zoom Distance
+		-- Mode Invisicam membuat part menjadi transparan jika menghalangi kamera (efek tembus pandang)
+		lp.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam 
+	else
+		lp.CameraMaxZoomDistance = 128 -- Default Roblox
+		lp.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Zoom
+	end
+end)
+
 CreateButton("Delete Safe Walls", function()
 	local walls = workspace:FindFirstChild("VIPWalls") or workspace:FindFirstChild("Wallses")
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Sky Walk Edition) Loaded")
+print("✅ Dj Hub Remastered (Underground -10 Studs + Zoom Clip) Loaded")
