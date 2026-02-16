@@ -1,6 +1,6 @@
---// Dj Hub (Ultimate Version - Lucky Block Dropdown Fixed)
+--// Dj Hub (Ultimate Version - Resized UI Fixed)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Dropdown Menu for Lucky Block + Combo Fix (No Double Sink)
+--// Update: Lucky Block Dropdown + RESIZED GUI (Fit to Screen)
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -96,8 +96,9 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 360, 0, 500)
-MainFrame.Position = UDim2.new(0.5, -180, 0.5, -200)
+-- [CHANGED] Ukuran diperkecil (Height 350) agar tidak kepanjangan di layar
+MainFrame.Size = UDim2.new(0, 360, 0, 350) 
+MainFrame.Position = UDim2.new(0.5, -180, 0.5, -175) -- Posisi ditengah (di-adjust sesuai tinggi baru)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.35 
 MainFrame.BorderSizePixel = 0
@@ -431,7 +432,7 @@ local function slideToPosition(targetPos)
 	local dist = (Vector3.new(targetPos.X, 0, targetPos.Z) - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Magnitude
 	
 	-- Kecepatan "Nyeret" (Slide Speed) - Jangan terlalu cepat biar gak mati
-	local speed = 250 -- Studs per detik (Bisa diatur)
+	local speed = 600 -- Studs per detik (Bisa diatur)
 	local time = dist / speed
 	
 	-- Kunci Y pada undergroundFixedY atau targetPos.Y - 10
@@ -1413,4 +1414,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Dropdown + Slide Fixed + Combo Support) Loaded")
+print("✅ Dj Hub Remastered (Resized to fit screen) Loaded")
