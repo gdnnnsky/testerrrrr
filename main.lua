@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Underground Mode (-10 Studs) + Unlimited Zoom/Clip Camera
+--// Update: Lucky Block Underground (Take & Return Base) + Unlimited Zoom
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -96,7 +96,7 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 360, 0, 480) -- Height adjusted
+MainFrame.Size = UDim2.new(0, 360, 0, 500) -- Height adjusted
 MainFrame.Position = UDim2.new(0.5, -180, 0.5, -200)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.35 
@@ -318,6 +318,11 @@ local autoTicketEnabled = false
 -- [NEW] Underground Mode Variables
 local autoClaimTicketEnabled = false 
 local autoTestCommonEnabled = false
+
+-- [NEW] Lucky Block Variables
+local autoDivineUndergroundEnabled = false
+local autoSecretUndergroundEnabled = false
+
 local undergroundPlatform = nil
 local undergroundConnection = nil
 
@@ -786,6 +791,108 @@ CreateToggle("Long Range Brainrot Take", function(toggled)
 	end
 end)
 
+--=============================================================================
+--// LUCKY BLOCK SECTION (NEW)
+--=============================================================================
+
+CreateSection("LUCKY BLOCK (UNDERGROUND)")
+
+CreateToggle("Auto Divine (Take & Return)", function(toggled)
+	autoDivineUndergroundEnabled = toggled
+	toggleUndergroundPlatform(toggled) -- Safety Platform
+	
+	if autoDivineUndergroundEnabled then
+		task.spawn(function()
+			while autoDivineUndergroundEnabled do
+				task.wait(0.5) -- Loop scan
+				
+				local folder = workspace:FindFirstChild("ActiveLuckyBlocks")
+				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+				
+				if folder and hrp then
+					for _, model in pairs(folder:GetChildren()) do
+						-- Cek Nama mengandung "Divine"
+						if string.find(model.Name, "Divine") then
+							local root = model:FindFirstChild("RootPart")
+							if root then
+								-- 1. Teleport ke Block (-10 Studs)
+								hrp.CFrame = CFrame.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
+								hrp.AssemblyLinearVelocity = Vector3.zero
+								
+								-- 2. Ambil Block
+								local prompt = root:FindFirstChild("ProximityPrompt")
+								if prompt then
+									fireproximityprompt(prompt)
+								end
+								
+								task.wait(0.5) -- Tunggu proses ambil
+								
+								-- 3. Return to Base (SpawnLocation1) -10 Studs
+								local base = workspace:FindFirstChild("SpawnLocation1")
+								if base then
+									hrp.CFrame = CFrame.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+									hrp.AssemblyLinearVelocity = Vector3.zero
+								end
+								
+								task.wait(1) -- Tunggu aman di base sebelum cari lagi
+								break -- Break loop biar satu-satu
+							end
+						end
+					end
+				end
+			end
+		end)
+	end
+end)
+
+CreateToggle("Auto Secret (Take & Return)", function(toggled)
+	autoSecretUndergroundEnabled = toggled
+	toggleUndergroundPlatform(toggled) -- Safety Platform
+	
+	if autoSecretUndergroundEnabled then
+		task.spawn(function()
+			while autoSecretUndergroundEnabled do
+				task.wait(0.5) -- Loop scan
+				
+				local folder = workspace:FindFirstChild("ActiveLuckyBlocks")
+				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+				
+				if folder and hrp then
+					for _, model in pairs(folder:GetChildren()) do
+						-- Cek Nama mengandung "Secret"
+						if string.find(model.Name, "Secret") then
+							local root = model:FindFirstChild("RootPart")
+							if root then
+								-- 1. Teleport ke Block (-10 Studs)
+								hrp.CFrame = CFrame.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
+								hrp.AssemblyLinearVelocity = Vector3.zero
+								
+								-- 2. Ambil Block
+								local prompt = root:FindFirstChild("ProximityPrompt")
+								if prompt then
+									fireproximityprompt(prompt)
+								end
+								
+								task.wait(0.5) -- Tunggu proses ambil
+								
+								-- 3. Return to Base (SpawnLocation1) -10 Studs
+								local base = workspace:FindFirstChild("SpawnLocation1")
+								if base then
+									hrp.CFrame = CFrame.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+									hrp.AssemblyLinearVelocity = Vector3.zero
+								end
+								
+								task.wait(1) -- Tunggu aman di base sebelum cari lagi
+								break -- Break loop biar satu-satu
+							end
+						end
+					end
+				end
+			end
+		end)
+	end
+end)
+
 CreateSection("OPTIMIZATION")
 
 CreateButton("Reduce Lag+ (Delete Maps)", function()
@@ -1217,4 +1324,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Underground -10 Studs + Zoom Clip) Loaded")
+print("✅ Dj Hub Remastered (Lucky Block Underground + Return Base) Loaded")
