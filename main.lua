@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Lucky Block Slide Mode (Safe) + Anti-Float Platform
+--// Update: Lauuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuucky Block Slide Mode (Safe) + Anti-Float Platform
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -830,7 +830,7 @@ end)
 
 CreateSection("LUCKY BLOCK (SLIDE MODE)")
 
-CreateToggle("Auto Divine (Slide)", function(toggled)
+CreateToggle("Auto Legendary (Slide)", function(toggled)
 	autoDivineUndergroundEnabled = toggled
 	toggleUndergroundPlatform(toggled) -- Safety Platform
 	
@@ -845,7 +845,7 @@ CreateToggle("Auto Divine (Slide)", function(toggled)
 				if folder and hrp then
 					for _, model in pairs(folder:GetChildren()) do
 						-- Cek Nama mengandung "Divine"
-						if string.find(model.Name, "Divine") then
+						if string.find(model.Name, "Legendary") then
 							local root = model:FindFirstChild("RootPart")
 							if root then
 								-- 1. Slide to Block (Safe -10 Y)
@@ -884,7 +884,7 @@ CreateToggle("Auto Divine (Slide)", function(toggled)
 	end
 end)
 
-CreateToggle("Auto Uncommon (Slide)", function(toggled)
+CreateToggle("Auto Secret (Slide)", function(toggled)
 	autoUncommonUndergroundEnabled = toggled
 	toggleUndergroundPlatform(toggled) -- Safety Platform
 	
@@ -899,7 +899,7 @@ CreateToggle("Auto Uncommon (Slide)", function(toggled)
 				if folder and hrp then
 					for _, model in pairs(folder:GetChildren()) do
 						-- Cek Nama mengandung "Uncommon"
-						if string.find(model.Name, "Uncommon") then
+						if string.find(model.Name, "Secret") then
 							local root = model:FindFirstChild("RootPart")
 							if root then
 								-- 1. Slide to Block (Safe -10 Y)
