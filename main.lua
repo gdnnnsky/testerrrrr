@@ -1,6 +1,8 @@
---// Dj Hub (Ultimate Version - Resized UI Fixed)
---// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Lucky Block Dropdown + RESIZED GUI (Fit to Screen)
+--// Dj Hub (Ultimate Version - Resized UI Fixed + Logic Update)
+--// Update Log: 
+--// 1. Auto Claim Ticket now uses SLIDE logic (Safe from object damage).
+--// 2. Lucky Block Slide now chains up to 3 blocks before returning to base.
+--// 3. Added ActionLock system so features don't conflict/glitch.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -96,9 +98,8 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
--- [CHANGED] Ukuran diperkecil (Height 350) agar tidak kepanjangan di layar
 MainFrame.Size = UDim2.new(0, 360, 0, 350) 
-MainFrame.Position = UDim2.new(0.5, -180, 0.5, -175) -- Posisi ditengah (di-adjust sesuai tinggi baru)
+MainFrame.Position = UDim2.new(0.5, -180, 0.5, -175)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.35 
 MainFrame.BorderSizePixel = 0
@@ -316,6 +317,9 @@ local activeLongRangeConnections = {}
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
 
+-- [NEW] GLOBAL LOCK to prevent Slide features from clashing
+local actionLock = false
+
 -- [NEW] Underground Mode Variables
 local autoClaimTicketEnabled = false 
 local autoTestCommonEnabled = false
@@ -328,11 +332,10 @@ local slideSettings = {
 	Secret = false,
 	Mythical = false
 }
-local isSlidingActive = false -- Semaphore to prevent multiple loops
 
 local undergroundPlatform = nil
 local undergroundConnection = nil
-local undergroundFixedY = nil -- To fix floating issue
+local undergroundFixedY = nil 
 
 local autoValentineEnabled = false 
 local autoDepositEnabled = false
@@ -385,70 +388,56 @@ end
 -- [NEW] Special Underground Platform Logic (-10 Studs) + FIXED FLOATING
 local function toggleUndergroundPlatform(state)
 	if state then
-		-- Hanya inisialisasi jika belum ada (Biar gak turun double -20)
 		if not undergroundPlatform then 
 			local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 			if hrp then
-				-- 1. Lower Player 10 Studs Down (Initial Teleport) & LOCK Y
-				-- Kita cek dulu apakah sudah ada di bawah (biar ga turun lagi kalo diaktifkan fitur kedua)
 				if not undergroundFixedY then
 					hrp.CFrame = hrp.CFrame * CFrame.new(0, -10, 0)
-					undergroundFixedY = hrp.Position.Y -- Simpan ketinggian awal di bawah tanah
+					undergroundFixedY = hrp.Position.Y 
 				end
 			end
 			
-			-- 2. Create Platform that stays under feet (In Underground)
 			undergroundPlatform = Instance.new("Part", workspace)
 			undergroundPlatform.Name = "DjUndergroundPlatform"
 			undergroundPlatform.Size = Vector3.new(15, 1, 15)
 			undergroundPlatform.Anchored = true
 			undergroundPlatform.Transparency = 0.5
 			undergroundPlatform.Material = Enum.Material.Neon
-			undergroundPlatform.Color = Color3.fromRGB(150, 0, 0) -- Dark Red for Underground
+			undergroundPlatform.Color = Color3.fromRGB(150, 0, 0) 
 			
 			undergroundConnection = RunService.Heartbeat:Connect(function()
 				if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and undergroundFixedY then
 					local currentHRP = lp.Character.HumanoidRootPart
-					-- [FIX] Platform Y locked to undergroundFixedY. Not dynamic player Y.
-					-- Platform hanya mengikuti X dan Z player. Y tetap diam di bawah tanah.
 					undergroundPlatform.CFrame = CFrame.new(currentHRP.Position.X, undergroundFixedY - 3.5, currentHRP.Position.Z)
 				end
 			end)
 		end
 	else
-		-- Matikan hanya jika semua fitur slide mati (diatur logic luar)
 		undergroundFixedY = nil
 		if undergroundConnection then undergroundConnection:Disconnect() undergroundConnection = nil end
 		if undergroundPlatform then undergroundPlatform:Destroy() undergroundPlatform = nil end
 	end
 end
 
--- [NEW] Helper Function: Safe Slide Movement (Nyeret)
+-- [NEW] Helper Function: Safe Slide Movement
 local function slideToPosition(targetPos)
 	local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 	
-	-- Hitung jarak
 	local dist = (Vector3.new(targetPos.X, 0, targetPos.Z) - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Magnitude
-	
-	-- Kecepatan "Nyeret" (Slide Speed) - Jangan terlalu cepat biar gak mati
-	local speed = 600 -- Studs per detik (Bisa diatur)
+	local speed = 600 -- Studs per second
 	local time = dist / speed
 	
-	-- Kunci Y pada undergroundFixedY atau targetPos.Y - 10
+	-- LOCK Y to Underground
 	local targetY = undergroundFixedY or targetPos.Y
 	
-	-- Gunakan Tween agar gerakan halus (Slide)
 	local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
 	local targetCFrame = CFrame.new(targetPos.X, targetY, targetPos.Z)
 	
 	local tween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
 	tween:Play()
-	
-	-- Tunggu sampai sampai
 	tween.Completed:Wait()
 	
-	-- Stop momentum setelah sampai
 	hrp.AssemblyLinearVelocity = Vector3.zero
 end
 
@@ -627,8 +616,8 @@ local function StartFollowing(targetPlayer)
 	if TargetLabel then TargetLabel.Text = "Following: " .. targetPlayer.Name end
 	
 	followConnection = RunService.RenderStepped:Connect(function()
-		-- [NEW] Pause Following if Deposit is running
-		if isDepositing then return end
+		-- [NEW] Pause Following if Deposit or Action is running
+		if isDepositing or actionLock then return end
 
 		if followTarget and followTarget.Character and followTarget.Character:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 			local tRoot = followTarget.Character.HumanoidRootPart
@@ -837,10 +826,9 @@ CreateToggle("Long Range Brainrot Take", function(toggled)
 end)
 
 --=============================================================================
---// LUCKY BLOCK SECTION (DROPDOWN + SLIDE MODE FIXED)
+--// LUCKY BLOCK SECTION (DROPDOWN + SLIDE MODE IMPROVED)
 --=============================================================================
 
--- CUSTOM DROPDOWN UI LOGIC
 local function CreateLuckyBlockDropdown()
 	local DropdownBtn = Instance.new("TextButton")
 	DropdownBtn.Name = "DropdownBtn"
@@ -882,23 +870,19 @@ local function CreateLuckyBlockDropdown()
 		end
 	end)
 
-	-- Logic pengatur status Slide (Master Controller)
 	local function updateMasterSlide()
-		-- 1. Cek apakah ada SATU SAJA yang nyala
 		local anyEnabled = false
 		for _, v in pairs(slideSettings) do
 			if v then anyEnabled = true break end
 		end
 
-		-- 2. Atur Platform Underground (Hanya sekali, tidak numpuk)
-		if anyEnabled then
-			toggleUndergroundPlatform(true) -- Ini akan set ke -10 dan LOCK
+		if anyEnabled or autoClaimTicketEnabled or autoTestCommonEnabled then
+			toggleUndergroundPlatform(true)
 		else
 			toggleUndergroundPlatform(false)
 		end
 	end
 
-	-- Buat 5 Toggle di dalam Dropdown
 	CreateToggle("Auto Divine (Slide)", function(t) slideSettings.Divine = t; updateMasterSlide() end, DropdownFrame)
 	CreateToggle("Auto Infinity (Slide)", function(t) slideSettings.Infinity = t; updateMasterSlide() end, DropdownFrame)
 	CreateToggle("Auto Celestial (Slide)", function(t) slideSettings.Celestial = t; updateMasterSlide() end, DropdownFrame)
@@ -908,12 +892,14 @@ end
 
 CreateLuckyBlockDropdown()
 
--- MASTER LOOP FOR SLIDE MODE (COMBO SUPPORT)
+-- [IMPROVED] MASTER LOOP FOR SLIDE MODE (CHAIN LOGIC: Max 3)
 task.spawn(function()
 	while true do
 		task.wait(0.5) -- Scan interval
 
-		-- Cek apakah ada yang aktif
+		-- Logic Guard: Jangan jalan kalau sedang sibuk (Lock)
+		if actionLock then continue end
+
 		local activeTypes = {}
 		if slideSettings.Divine then table.insert(activeTypes, "Divine") end
 		if slideSettings.Infinity then table.insert(activeTypes, "Infinity") end
@@ -923,53 +909,75 @@ task.spawn(function()
 
 		if #activeTypes > 0 and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 			local folder = workspace:FindFirstChild("ActiveLuckyBlocks")
+			
 			if folder then
-				local targetModel = nil
+				local collectedCount = 0
+				local maxCollect = 3
 				
-				-- Cari target sesuai setting yg nyala
-				for _, model in pairs(folder:GetChildren()) do
-					for _, typeName in pairs(activeTypes) do
-						if string.find(model.Name, typeName) then
-							targetModel = model
-							break
+				-- 1. Helper function to find closest valid block
+				local function getClosestBlock()
+					local closest = nil
+					local minDist = 999999
+					local myPos = lp.Character.HumanoidRootPart.Position
+					
+					for _, model in pairs(folder:GetChildren()) do
+						local isValidType = false
+						for _, typeName in pairs(activeTypes) do
+							if string.find(model.Name, typeName) then isValidType = true break end
+						end
+						
+						if isValidType and model:FindFirstChild("RootPart") then
+							local root = model.RootPart
+							local dist = (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(myPos.X, 0, myPos.Z)).Magnitude
+							if dist < minDist then
+								minDist = dist
+								closest = model
+							end
 						end
 					end
-					if targetModel then break end
+					return closest
 				end
-
-				if targetModel then
-					local root = targetModel:FindFirstChild("RootPart")
-					if root then
-						-- EXECUTE SLIDE SEQUENCE
-						-- 1. Slide to Block (Platform Logic handles keeping us at -10)
-						-- Kita ambil posisi X dan Z target, tapi Y nya akan dihandle oleh slideToPosition yg pake undergroundFixedY
+				
+				-- 2. Chain Loop (Max 3)
+				while collectedCount < maxCollect do
+					local targetModel = getClosestBlock()
+					
+					if targetModel then
+						actionLock = true -- LOCK
+						local root = targetModel.RootPart
+						
+						-- Slide To Block
 						local targetPos = Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
-						
 						slideToPosition(targetPos) 
-						task.wait(0.2)
 						
-						-- 2. Ambil Block
+						-- Take Block
 						local prompt = root:FindFirstChild("ProximityPrompt")
 						if prompt then
-							-- Spam Prompt
-							for i = 1, 15 do
+							for i = 1, 10 do
 								if not root.Parent or not prompt.Parent then break end
 								fireproximityprompt(prompt)
-								task.wait(0.1)
+								task.wait(0.05)
 							end
 						end
 						
+						collectedCount = collectedCount + 1
 						task.wait(0.2)
-						
-						-- 3. Return to Base (Slide Mode) - Biar aman gak mati kena object damage di atas
-						local base = workspace:FindFirstChild("SpawnLocation1")
-						if base then
-							local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
-							slideToPosition(basePos)
-						end
-						
-						task.wait(1.5) -- Cooldown
+					else
+						break -- No more blocks found
 					end
+				end
+				
+				-- 3. Return to Base if we collected anything
+				if collectedCount > 0 then
+					local base = workspace:FindFirstChild("SpawnLocation1")
+					if base then
+						local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+						slideToPosition(basePos)
+					end
+					actionLock = false -- UNLOCK
+					task.wait(1) -- Cooldown di base
+				else
+					actionLock = false
 				end
 			end
 		end
@@ -1129,41 +1137,70 @@ CreateToggle("Auto Tickets (Legacy)", function(toggled)
 	end
 end)
 
--- [NEW] Auto Claim Ticket (Underground Mode)
+-- [NEW FIXED] Auto Claim Ticket (Underground) WITH SLIDE LOGIC
 CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	autoClaimTicketEnabled = toggled
-	toggleUndergroundPlatform(toggled) -- Aktifkan Platform Bawah Tanah
+	
+	-- Jika dinyalakan, pastikan platform aktif
+	if toggled then 
+		toggleUndergroundPlatform(true) 
+	else
+		-- Cek apakah fitur lain (LuckyBlock) masih butuh platform
+		local anyLuckyBlockOn = false
+		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
+		if not anyLuckyBlockOn and not autoTestCommonEnabled then
+			toggleUndergroundPlatform(false)
+		end
+	end
 	
 	if autoClaimTicketEnabled then
 		task.spawn(function()
 			while autoClaimTicketEnabled do
-				task.wait(0.1) -- Loop cepat untuk deteksi spawn
+				task.wait(0.2) -- Interval cek
+				
+				-- Logic Guard: Lock system agar tidak tabrakan dengan Lucky Block
+				if actionLock then continue end
+				
 				local folder = workspace:FindFirstChild("ArcadeEventTickets")
 				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 				
 				if folder and hrp then
+					local foundTicket = false
+					
 					for _, model in pairs(folder:GetChildren()) do
 						if model.Name == "Ticket" and model:FindFirstChild("Ticket") then
+							actionLock = true -- LOCK
+							foundTicket = true
+							
 							local part = model.Ticket
-							-- Teleport ke BAWAH tiket -10 Studs (Underground)
+							-- 1. Slide to Ticket (Underground Mode handled by slideToPosition)
 							local targetPos = part.Position
-							-- Cukup teleport dekat, karena ini tiket biasa (tapi tetap pakai platform fixed)
-							hrp.CFrame = CFrame.new(targetPos.X, targetPos.Y - 10, targetPos.Z)
+							slideToPosition(targetPos)
 							
-							-- Stop momentum
-							hrp.AssemblyLinearVelocity = Vector3.zero
-							hrp.AssemblyAngularVelocity = Vector3.zero
-							
-							-- Ambil Tiket
+							-- 2. Ambil Tiket (TouchInterest)
 							if part:FindFirstChild("TouchInterest") then
 								if firetouchinterest then
 									firetouchinterest(hrp, part, 0)
 									firetouchinterest(hrp, part, 1)
 								else
-									part.CFrame = hrp.CFrame -- Fallback
+									part.CFrame = hrp.CFrame
 								end
 							end
+							
+							task.wait(0.2)
+							break -- Ambil satu dulu baru return base (biar aman)
 						end
+					end
+					
+					-- 3. Return to Base (Safety)
+					if foundTicket then
+						local base = workspace:FindFirstChild("SpawnLocation1")
+						if base then
+							local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+							slideToPosition(basePos)
+						end
+						actionLock = false -- UNLOCK
+						task.wait(1) -- Cooldown
 					end
 				end
 			end
@@ -1174,12 +1211,15 @@ end)
 -- [NEW] TEST FEATURE: Common Brainrot Underground + Return Base (Slide Mode)
 CreateToggle("TEST Underground (Common + Return)", function(toggled)
 	autoTestCommonEnabled = toggled
-	toggleUndergroundPlatform(toggled) -- Gunakan logic platform underground yang sama
+	if toggled then toggleUndergroundPlatform(true) 
+	else toggleUndergroundPlatform(false) end
 	
 	if autoTestCommonEnabled then
 		task.spawn(function()
 			while autoTestCommonEnabled do
 				task.wait(0.1)
+				if actionLock then continue end
+				
 				local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild("Common")
 				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 				
@@ -1187,6 +1227,7 @@ CreateToggle("TEST Underground (Common + Return)", function(toggled)
 					for _, model in pairs(folder:GetChildren()) do
 						local root = model:FindFirstChild("Root")
 						if root then
+							actionLock = true
 							-- 1. Slide to Brainrot
 							local targetPos = Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
 							slideToPosition(targetPos)
@@ -1197,7 +1238,7 @@ CreateToggle("TEST Underground (Common + Return)", function(toggled)
 								fireproximityprompt(prompt)
 							end
 							
-							task.wait(0.5) -- Tunggu ambil
+							task.wait(0.5) 
 							
 							-- 3. Return to Base (Slide)
 							local base = workspace:FindFirstChild("SpawnLocation1")
@@ -1206,8 +1247,9 @@ CreateToggle("TEST Underground (Common + Return)", function(toggled)
 								slideToPosition(basePos)
 							end
 							
-							task.wait(1) -- Cooldown di base
-							break -- Break loop biar satu-satu
+							actionLock = false
+							task.wait(1)
+							break 
 						end
 					end
 				end
@@ -1414,4 +1456,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Resized to fit screen) Loaded")
+print("✅ Dj Hub Remastered (Fixed Ticket Logic + Improved Lucky Block Chain) Loaded")
