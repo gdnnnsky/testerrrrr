@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Fix Lucky Block (Looping Issue) + Return Base Added to Common + Secret changed to Uncommon
+--// Update: Fix grdfffffffffLucky Block (Looping Issue) + Return Base Added to Common + Secret changed to Uncommon
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -852,7 +852,7 @@ CreateToggle("Auto Divine (Fix Loop)", function(toggled)
 	end
 end)
 
-CreateToggle("Auto Uncommon (Fix Loop)", function(toggled)
+CreateToggle("Auto Legendary (Fix Loop)", function(toggled)
 	autoUncommonUndergroundEnabled = toggled
 	toggleUndergroundPlatform(toggled) -- Safety Platform
 	
@@ -867,7 +867,7 @@ CreateToggle("Auto Uncommon (Fix Loop)", function(toggled)
 				if folder and hrp then
 					for _, model in pairs(folder:GetChildren()) do
 						-- Cek Nama mengandung "Uncommon"
-						if string.find(model.Name, "Uncommon") then
+						if string.find(model.Name, "Legendary") then
 							local root = model:FindFirstChild("RootPart")
 							if root then
 								-- 1. Teleport ke Block (-10 Studs)
