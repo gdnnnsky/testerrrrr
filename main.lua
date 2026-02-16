@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Lauuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuucky Block Slide Mode (Safe) + Anti-Float Platform
+--// Update:  Block Slide Mode (Safe) + Anti-Float Platform
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -420,7 +420,7 @@ local function slideToPosition(targetPos)
 	local dist = (Vector3.new(targetPos.X, 0, targetPos.Z) - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Magnitude
 	
 	-- Kecepatan "Nyeret" (Slide Speed) - Jangan terlalu cepat biar gak mati
-	local speed = 250 -- Studs per detik (Bisa diatur)
+	local speed = 600 -- Studs per detik (Bisa diatur)
 	local time = dist / speed
 	
 	-- Kunci Y pada undergroundFixedY atau targetPos.Y - 10
