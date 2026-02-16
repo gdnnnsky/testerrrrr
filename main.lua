@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Fix grdfffffffffLucky Block (Looping Issue) + Return Base Added to Common + Secret changed to Uncommon
+--// Update: Lucky Block Slide Mode (Safe) + Anti-Float Platform
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -96,7 +96,7 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 360, 0, 500) -- Height adjusted
+MainFrame.Size = UDim2.new(0, 360, 0, 500)
 MainFrame.Position = UDim2.new(0.5, -180, 0.5, -200)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.35 
@@ -321,10 +321,11 @@ local autoTestCommonEnabled = false
 
 -- [NEW] Lucky Block Variables
 local autoDivineUndergroundEnabled = false
-local autoUncommonUndergroundEnabled = false -- Renamed from Secret
+local autoUncommonUndergroundEnabled = false
 
 local undergroundPlatform = nil
 local undergroundConnection = nil
+local undergroundFixedY = nil -- To fix floating issue
 
 local autoValentineEnabled = false 
 local autoDepositEnabled = false
@@ -374,13 +375,14 @@ local function togglePlatformState(state)
 	end
 end
 
--- [NEW] Special Underground Platform Logic (-10 Studs)
+-- [NEW] Special Underground Platform Logic (-10 Studs) + FIXED FLOATING
 local function toggleUndergroundPlatform(state)
 	if state then
-		-- 1. Lower Player 10 Studs Down (Initial Teleport)
-		if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-			local hrp = lp.Character.HumanoidRootPart
+		local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			-- 1. Lower Player 10 Studs Down (Initial Teleport) & LOCK Y
 			hrp.CFrame = hrp.CFrame * CFrame.new(0, -10, 0)
+			undergroundFixedY = hrp.Position.Y -- Simpan ketinggian awal di bawah tanah
 		end
 		
 		-- 2. Create Platform that stays under feet (In Underground)
@@ -394,17 +396,48 @@ local function toggleUndergroundPlatform(state)
 			undergroundPlatform.Color = Color3.fromRGB(150, 0, 0) -- Dark Red for Underground
 			
 			undergroundConnection = RunService.Heartbeat:Connect(function()
-				if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-					local hrp = lp.Character.HumanoidRootPart
-					-- Platform selalu menempel di bawah kaki (offset dikit biar berdiri pas)
-					undergroundPlatform.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y - 3.5, hrp.Position.Z)
+				if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and undergroundFixedY then
+					local currentHRP = lp.Character.HumanoidRootPart
+					-- [FIX] Platform Y locked to undergroundFixedY. Not dynamic player Y.
+					-- Platform hanya mengikuti X dan Z player. Y tetap diam di bawah tanah.
+					undergroundPlatform.CFrame = CFrame.new(currentHRP.Position.X, undergroundFixedY - 3.5, currentHRP.Position.Z)
 				end
 			end)
 		end
 	else
+		undergroundFixedY = nil
 		if undergroundConnection then undergroundConnection:Disconnect() undergroundConnection = nil end
 		if undergroundPlatform then undergroundPlatform:Destroy() undergroundPlatform = nil end
 	end
+end
+
+-- [NEW] Helper Function: Safe Slide Movement (Nyeret)
+local function slideToPosition(targetPos)
+	local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	
+	-- Hitung jarak
+	local dist = (Vector3.new(targetPos.X, 0, targetPos.Z) - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Magnitude
+	
+	-- Kecepatan "Nyeret" (Slide Speed) - Jangan terlalu cepat biar gak mati
+	local speed = 250 -- Studs per detik (Bisa diatur)
+	local time = dist / speed
+	
+	-- Kunci Y pada undergroundFixedY atau targetPos.Y - 10
+	local targetY = undergroundFixedY or targetPos.Y
+	
+	-- Gunakan Tween agar gerakan halus (Slide)
+	local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
+	local targetCFrame = CFrame.new(targetPos.X, targetY, targetPos.Z)
+	
+	local tween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
+	tween:Play()
+	
+	-- Tunggu sampai sampai
+	tween.Completed:Wait()
+	
+	-- Stop momentum setelah sampai
+	hrp.AssemblyLinearVelocity = Vector3.zero
 end
 
 -- 2. Helper Logic: Check Item Name
@@ -792,12 +825,12 @@ CreateToggle("Long Range Brainrot Take", function(toggled)
 end)
 
 --=============================================================================
---// LUCKY BLOCK SECTION (FIXED & RENAMED)
+--// LUCKY BLOCK SECTION (SLIDE MODE)
 --=============================================================================
 
-CreateSection("LUCKY BLOCK (UNDERGROUND)")
+CreateSection("LUCKY BLOCK (SLIDE MODE)")
 
-CreateToggle("Auto Divine (Fix Loop)", function(toggled)
+CreateToggle("Auto Divine (Slide)", function(toggled)
 	autoDivineUndergroundEnabled = toggled
 	toggleUndergroundPlatform(toggled) -- Safety Platform
 	
@@ -815,33 +848,32 @@ CreateToggle("Auto Divine (Fix Loop)", function(toggled)
 						if string.find(model.Name, "Divine") then
 							local root = model:FindFirstChild("RootPart")
 							if root then
-								-- 1. Teleport ke Block (-10 Studs)
-								hrp.CFrame = CFrame.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
-								hrp.AssemblyLinearVelocity = Vector3.zero
+								-- 1. Slide to Block (Safe -10 Y)
+								local targetPos = Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
+								slideToPosition(targetPos) -- Move slowly
 								
-								task.wait(0.2) -- Physics settle
+								task.wait(0.2)
 								
 								-- 2. Ambil Block (SPAM PROMPT)
 								local prompt = root:FindFirstChild("ProximityPrompt")
 								if prompt then
-									-- Coba ambil berulang kali sampai item hilang
-									for i = 1, 15 do -- Spam 15x max
-										if not root.Parent or not prompt.Parent then break end -- Berhasil diambil (hilang)
+									for i = 1, 15 do
+										if not root.Parent or not prompt.Parent then break end
 										fireproximityprompt(prompt)
-										task.wait(0.1) -- Jeda antar spam
+										task.wait(0.1)
 									end
 								end
 								
-								task.wait(0.2) -- Jeda dikit
+								task.wait(0.2)
 								
-								-- 3. Return to Base (Hanya jika berhasil/selesai)
+								-- 3. Return to Base (Slide)
 								local base = workspace:FindFirstChild("SpawnLocation1")
 								if base then
-									hrp.CFrame = CFrame.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
-									hrp.AssemblyLinearVelocity = Vector3.zero
+									local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+									slideToPosition(basePos) -- Slide back
 								end
 								
-								task.wait(1.5) -- Tunggu aman di base (Cooldown)
+								task.wait(1.5)
 								break -- Break loop biar satu-satu
 							end
 						end
@@ -852,7 +884,7 @@ CreateToggle("Auto Divine (Fix Loop)", function(toggled)
 	end
 end)
 
-CreateToggle("Auto Legendary (Fix Loop)", function(toggled)
+CreateToggle("Auto Uncommon (Slide)", function(toggled)
 	autoUncommonUndergroundEnabled = toggled
 	toggleUndergroundPlatform(toggled) -- Safety Platform
 	
@@ -867,36 +899,35 @@ CreateToggle("Auto Legendary (Fix Loop)", function(toggled)
 				if folder and hrp then
 					for _, model in pairs(folder:GetChildren()) do
 						-- Cek Nama mengandung "Uncommon"
-						if string.find(model.Name, "Legendary") then
+						if string.find(model.Name, "Uncommon") then
 							local root = model:FindFirstChild("RootPart")
 							if root then
-								-- 1. Teleport ke Block (-10 Studs)
-								hrp.CFrame = CFrame.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
-								hrp.AssemblyLinearVelocity = Vector3.zero
+								-- 1. Slide to Block (Safe -10 Y)
+								local targetPos = Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
+								slideToPosition(targetPos)
 								
-								task.wait(0.2) -- Physics settle
+								task.wait(0.2)
 								
 								-- 2. Ambil Block (SPAM PROMPT)
 								local prompt = root:FindFirstChild("ProximityPrompt")
 								if prompt then
-									-- Coba ambil berulang kali sampai item hilang
-									for i = 1, 15 do -- Spam 15x max
-										if not root.Parent or not prompt.Parent then break end -- Berhasil diambil (hilang)
+									for i = 1, 15 do
+										if not root.Parent or not prompt.Parent then break end
 										fireproximityprompt(prompt)
-										task.wait(0.1) -- Jeda antar spam
+										task.wait(0.1)
 									end
 								end
 								
-								task.wait(0.2) -- Jeda dikit
+								task.wait(0.2)
 								
-								-- 3. Return to Base (Hanya jika berhasil/selesai)
+								-- 3. Return to Base (Slide)
 								local base = workspace:FindFirstChild("SpawnLocation1")
 								if base then
-									hrp.CFrame = CFrame.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
-									hrp.AssemblyLinearVelocity = Vector3.zero
+									local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+									slideToPosition(basePos)
 								end
 								
-								task.wait(1.5) -- Tunggu aman di base (Cooldown)
+								task.wait(1.5)
 								break -- Break loop biar satu-satu
 							end
 						end
@@ -1078,6 +1109,7 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 							local part = model.Ticket
 							-- Teleport ke BAWAH tiket -10 Studs (Underground)
 							local targetPos = part.Position
+							-- Cukup teleport dekat, karena ini tiket biasa (tapi tetap pakai platform fixed)
 							hrp.CFrame = CFrame.new(targetPos.X, targetPos.Y - 10, targetPos.Z)
 							
 							-- Stop momentum
@@ -1101,7 +1133,7 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	end
 end)
 
--- [NEW] TEST FEATURE: Common Brainrot Underground + Return Base
+-- [NEW] TEST FEATURE: Common Brainrot Underground + Return Base (Slide Mode)
 CreateToggle("TEST Underground (Common + Return)", function(toggled)
 	autoTestCommonEnabled = toggled
 	toggleUndergroundPlatform(toggled) -- Gunakan logic platform underground yang sama
@@ -1117,10 +1149,9 @@ CreateToggle("TEST Underground (Common + Return)", function(toggled)
 					for _, model in pairs(folder:GetChildren()) do
 						local root = model:FindFirstChild("Root")
 						if root then
-							-- 1. Teleport ke BAWAH Brainrot -10 Studs
-							local targetPos = root.Position
-							hrp.CFrame = CFrame.new(targetPos.X, targetPos.Y - 10, targetPos.Z)
-							hrp.AssemblyLinearVelocity = Vector3.zero
+							-- 1. Slide to Brainrot
+							local targetPos = Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
+							slideToPosition(targetPos)
 							
 							-- 2. Ambil
 							local prompt = root:FindFirstChild("TakePrompt")
@@ -1130,11 +1161,11 @@ CreateToggle("TEST Underground (Common + Return)", function(toggled)
 							
 							task.wait(0.5) -- Tunggu ambil
 							
-							-- 3. Return to Base (UPDATED)
+							-- 3. Return to Base (Slide)
 							local base = workspace:FindFirstChild("SpawnLocation1")
 							if base then
-								hrp.CFrame = CFrame.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
-								hrp.AssemblyLinearVelocity = Vector3.zero
+								local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+								slideToPosition(basePos)
 							end
 							
 							task.wait(1) -- Cooldown di base
@@ -1345,4 +1376,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Fixed Loop + Uncommon Added) Loaded")
+print("✅ Dj Hub Remastered (Slide Move + Anti-Float Platform) Loaded")
