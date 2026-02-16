@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: dsadwdsawdsawLong Range Brainrot & Fixed Deposit Timing & Auto Claim Ticket (TP Spawn)
+--// Update: Sky Walk Logic + Arcade Ticket & Common Brainrot Test
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -96,7 +96,7 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 360, 0, 420) -- Slightly increased height
+MainFrame.Size = UDim2.new(0, 360, 0, 450) -- Height adjusted for new features
 MainFrame.Position = UDim2.new(0.5, -180, 0.5, -200)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.35 
@@ -314,8 +314,12 @@ local activeInteractConnections = {}
 local activeLongRangeConnections = {}
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
-local autoClaimTicketEnabled = false -- [NEW]
-local claimTicketConnection = nil -- [NEW]
+
+-- [NEW] Sky Walk Variables
+local autoClaimTicketEnabled = false 
+local autoTestCommonEnabled = false
+local skyWalkPlatform = nil
+local skyWalkConnection = nil
 
 local autoValentineEnabled = false 
 local autoDepositEnabled = false
@@ -334,7 +338,7 @@ local autoEquipEnabled = false
 --// LOGIC FUNCTIONS
 --=============================================================================
 
--- 1. Platform Logic 
+-- 1. Platform Logic (Standard)
 local function togglePlatformState(state)
 	if state then
 		if not pPart then
@@ -362,6 +366,39 @@ local function togglePlatformState(state)
 	else
 		if pConn then pConn:Disconnect() pConn = nil end
 		if pPart then pPart:Destroy() pPart = nil end
+	end
+end
+
+-- [NEW] Special Sky Platform Logic (For Ticket & Test)
+local function toggleSkyPlatform(state)
+	if state then
+		-- 1. Lift Player 80 Studs Up (Initial Lift)
+		if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+			local hrp = lp.Character.HumanoidRootPart
+			hrp.CFrame = hrp.CFrame * CFrame.new(0, 80, 0)
+		end
+		
+		-- 2. Create Platform that stays under feet
+		if not skyWalkPlatform then
+			skyWalkPlatform = Instance.new("Part", workspace)
+			skyWalkPlatform.Name = "DjSkyPlatform"
+			skyWalkPlatform.Size = Vector3.new(15, 1, 15)
+			skyWalkPlatform.Anchored = true
+			skyWalkPlatform.Transparency = 0.5
+			skyWalkPlatform.Material = Enum.Material.Neon
+			skyWalkPlatform.Color = Color3.fromRGB(255, 120, 30) -- Orange for Special Mode
+			
+			skyWalkConnection = RunService.Heartbeat:Connect(function()
+				if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+					local hrp = lp.Character.HumanoidRootPart
+					-- Platform selalu menempel di bawah kaki (offset dikit biar berdiri pas)
+					skyWalkPlatform.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y - 3.5, hrp.Position.Z)
+				end
+			end)
+		end
+	else
+		if skyWalkConnection then skyWalkConnection:Disconnect() skyWalkConnection = nil end
+		if skyWalkPlatform then skyWalkPlatform:Destroy() skyWalkPlatform = nil end
 	end
 end
 
@@ -874,7 +911,7 @@ CreateToggle("Auto Game Console", function(toggled)
 	end
 end)
 
-CreateToggle("Auto Tickets", function(toggled)
+CreateToggle("Auto Tickets (Legacy)", function(toggled)
 	autoTicketEnabled = toggled
 	if autoTicketEnabled then
 		task.spawn(function()
@@ -902,70 +939,83 @@ CreateToggle("Auto Tickets", function(toggled)
 	end
 end)
 
--- [NEW] Auto Claim Ticket (Teleport Mode)
-CreateToggle("Auto Claim Ticket (TP Spawn)", function(toggled)
+-- [NEW] Auto Claim Ticket (Sky Walk Mode)
+CreateToggle("Auto Claim Ticket (Sky Walk)", function(toggled)
 	autoClaimTicketEnabled = toggled
+	toggleSkyPlatform(toggled) -- Aktifkan Platform di bawah kaki
 	
-	-- Fungsi Eksekusi Claim
-	local function processTicket(model)
-		if not autoClaimTicketEnabled then return end
-		
+	if autoClaimTicketEnabled then
 		task.spawn(function()
-			-- Tunggu sebentar agar part tiket benar-benar load
-			local part = model:WaitForChild("Ticket", 5) 
-			local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-			
-			if part and hrp then
-				-- 1. Teleport ke atas tiket (Ketinggian 78 Studs)
-				local ticketPos = part.Position
-				local targetCFrame = CFrame.new(ticketPos.X, ticketPos.Y + 78, ticketPos.Z)
+			while autoClaimTicketEnabled do
+				task.wait(0.1) -- Loop cepat untuk deteksi spawn
+				local folder = workspace:FindFirstChild("ArcadeEventTickets")
+				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 				
-				hrp.CFrame = targetCFrame
-				
-				-- Stop velocity agar tidak jatuh/terlempar
-				hrp.AssemblyLinearVelocity = Vector3.zero
-				hrp.AssemblyAngularVelocity = Vector3.zero
-				
-				task.wait(0.2) -- Jeda sedikit untuk sinkronisasi posisi
-				
-				-- 2. Ambil Tiket (Logic Auto Tickets)
-				if part:FindFirstChild("TouchInterest") then
-					if firetouchinterest then
-						firetouchinterest(hrp, part, 0)
-						firetouchinterest(hrp, part, 1)
-					else
-						-- Fallback jika exploit tidak support firetouchinterest
-						-- Kita tarik tiketnya ke atas (ke arah player) karena player ada di langit
-						part.CFrame = hrp.CFrame 
+				if folder and hrp then
+					for _, model in pairs(folder:GetChildren()) do
+						if model.Name == "Ticket" and model:FindFirstChild("Ticket") then
+							local part = model.Ticket
+							-- Teleport ke atas tiket + 80 Studs (Platform akan ikut otomatis krn logic toggleSkyPlatform)
+							local targetPos = part.Position
+							hrp.CFrame = CFrame.new(targetPos.X, targetPos.Y + 80, targetPos.Z)
+							
+							-- Stop momentum
+							hrp.AssemblyLinearVelocity = Vector3.zero
+							hrp.AssemblyAngularVelocity = Vector3.zero
+							
+							-- Ambil Tiket
+							if part:FindFirstChild("TouchInterest") then
+								if firetouchinterest then
+									firetouchinterest(hrp, part, 0)
+									firetouchinterest(hrp, part, 1)
+								else
+									part.CFrame = hrp.CFrame -- Fallback
+								end
+							end
+						end
 					end
 				end
 			end
 		end)
 	end
+end)
 
-	if autoClaimTicketEnabled then
-		local folder = workspace:FindFirstChild("ArcadeEventTickets")
-		if folder then
-			-- Cek tiket yang sudah ada
-			for _, child in pairs(folder:GetChildren()) do
-				if child.Name == "Ticket" then
-					processTicket(child)
+-- [NEW] TEST FEATURE: Common Brainrot Sky Walk
+CreateToggle("TEST Sky Walk (Common Brainrot)", function(toggled)
+	autoTestCommonEnabled = toggled
+	toggleSkyPlatform(toggled) -- Gunakan logic platform yang sama
+	
+	if autoTestCommonEnabled then
+		task.spawn(function()
+			while autoTestCommonEnabled do
+				task.wait(0.1)
+				-- Path: Workspace -> ActiveBrainrots -> Common -> (Model) -> Root
+				local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild("Common")
+				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+				
+				if folder and hrp then
+					for _, model in pairs(folder:GetChildren()) do
+						-- Pastikan ada Root part
+						local root = model:FindFirstChild("Root")
+						if root then
+							-- Teleport ke atas Brainrot + 80 Studs
+							local targetPos = root.Position
+							hrp.CFrame = CFrame.new(targetPos.X, targetPos.Y + 80, targetPos.Z)
+							
+							hrp.AssemblyLinearVelocity = Vector3.zero
+							hrp.AssemblyAngularVelocity = Vector3.zero
+							
+							-- Coba ambil (biasanya pakai prompt, tapi ini test posisi)
+							-- Kita fire prompt kalau ada
+							local prompt = root:FindFirstChild("TakePrompt")
+							if prompt then
+								fireproximityprompt(prompt)
+							end
+						end
+					end
 				end
 			end
-			
-			-- Cek tiket yang baru spawn (Realtime)
-			claimTicketConnection = folder.ChildAdded:Connect(function(child)
-				if child.Name == "Ticket" then
-					processTicket(child)
-				end
-			end)
-		end
-	else
-		-- Matikan koneksi event jika fitur dimatikan
-		if claimTicketConnection then
-			claimTicketConnection:Disconnect()
-			claimTicketConnection = nil
-		end
+		end)
 	end
 end)
 
@@ -1156,4 +1206,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Full Version + Auto Claim Ticket TP) Loaded")
+print("✅ Dj Hub Remastered (Sky Walk Edition) Loaded")
