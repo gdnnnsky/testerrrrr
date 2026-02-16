@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: awwwwwwwwwwwwock Underground (Take & Return Base) + Unlimited Zoom
+--// Update: atererererererererererock Underground (Take & Return Base) + Unlimited Zoom
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -1097,7 +1097,7 @@ CreateToggle("TEST Underground (Epic LUCKBLOCK)", function(toggled)
 			while autoTestCommonEnabled do
 				task.wait(0.1)
 				-- Path: Workspace -> ActiveBrainrots -> Common -> (Model) -> Root
-				local folder = workspace:FindFirstChild("ActiveLuckyBlocks") and workspace.ActiveBrainrots:FindFirstChild("Epic")
+				local folder = workspace:FindFirstChild("ActiveLuckyBlocks") and workspace.ActiveBrainrots:FindFirstChild("NaturalSpawnLuckyBlock_Epic")
 				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 				
 				if folder and hrp then
