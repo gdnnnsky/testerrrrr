@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: dsaaaaaaaaaaaaaaaaaaaaLucky Block Underground (Take & Return Base) + Unlimited Zoom
+--// Update: das wdsadfw Block Underground (Take & Return Base) + Unlimited Zoom
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -845,7 +845,7 @@ CreateToggle("Auto Divine (Take & Return)", function(toggled)
 	end
 end)
 
-CreateToggle("Auto Secret (Take & Return)", function(toggled)
+CreateToggle("Auto Common (Take & Return)", function(toggled)
 	autoSecretUndergroundEnabled = toggled
 	toggleUndergroundPlatform(toggled) -- Safety Platform
 	
@@ -860,11 +860,11 @@ CreateToggle("Auto Secret (Take & Return)", function(toggled)
 				if folder and hrp then
 					for _, model in pairs(folder:GetChildren()) do
 						-- Cek Nama mengandung "Secret"
-						if string.find(model.Name, "Secret") then
+						if string.find(model.Name, "Common") then
 							local root = model:FindFirstChild("RootPart")
 							if root then
 								-- 1. Teleport ke Block (-10 Studs)
-								hrp.CFrame = CFrame.new(root.Position.X, root.Position.Y - 13, root.Position.Z)
+								hrp.CFrame = CFrame.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
 								hrp.AssemblyLinearVelocity = Vector3.zero
 								
 								-- 2. Ambil Block
@@ -878,7 +878,7 @@ CreateToggle("Auto Secret (Take & Return)", function(toggled)
 								-- 3. Return to Base (SpawnLocation1) -10 Studs
 								local base = workspace:FindFirstChild("SpawnLocation1")
 								if base then
-									hrp.CFrame = CFrame.new(base.Position.X, base.Position.Y - 13, base.Position.Z)
+									hrp.CFrame = CFrame.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
 									hrp.AssemblyLinearVelocity = Vector3.zero
 								end
 								
@@ -1088,7 +1088,7 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 end)
 
 -- [NEW] TEST FEATURE: Common Brainrot Underground
-CreateToggle("TEST Underground (Common Brainrot)", function(toggled)
+CreateToggle("TEST Underground (Epic Brainrot)", function(toggled)
 	autoTestCommonEnabled = toggled
 	toggleUndergroundPlatform(toggled) -- Gunakan logic platform underground yang sama
 	
@@ -1097,7 +1097,7 @@ CreateToggle("TEST Underground (Common Brainrot)", function(toggled)
 			while autoTestCommonEnabled do
 				task.wait(0.1)
 				-- Path: Workspace -> ActiveBrainrots -> Common -> (Model) -> Root
-				local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild("Secret")
+				local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild("Epic")
 				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 				
 				if folder and hrp then
