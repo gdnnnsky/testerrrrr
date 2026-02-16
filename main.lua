@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: atererererererererererock Underground (Take & Return Base) + Unlimited Zoom
+--// Update: Fix Lucky Block (Looping Issue) + Return Base Added to Common + Secret changed to Uncommon
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -321,7 +321,7 @@ local autoTestCommonEnabled = false
 
 -- [NEW] Lucky Block Variables
 local autoDivineUndergroundEnabled = false
-local autoSecretUndergroundEnabled = false
+local autoUncommonUndergroundEnabled = false -- Renamed from Secret
 
 local undergroundPlatform = nil
 local undergroundConnection = nil
@@ -792,12 +792,12 @@ CreateToggle("Long Range Brainrot Take", function(toggled)
 end)
 
 --=============================================================================
---// LUCKY BLOCK SECTION (NEW)
+--// LUCKY BLOCK SECTION (FIXED & RENAMED)
 --=============================================================================
 
 CreateSection("LUCKY BLOCK (UNDERGROUND)")
 
-CreateToggle("Auto Divine (Take & Return)", function(toggled)
+CreateToggle("Auto Divine (Fix Loop)", function(toggled)
 	autoDivineUndergroundEnabled = toggled
 	toggleUndergroundPlatform(toggled) -- Safety Platform
 	
@@ -819,22 +819,29 @@ CreateToggle("Auto Divine (Take & Return)", function(toggled)
 								hrp.CFrame = CFrame.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
 								hrp.AssemblyLinearVelocity = Vector3.zero
 								
-								-- 2. Ambil Block
+								task.wait(0.2) -- Physics settle
+								
+								-- 2. Ambil Block (SPAM PROMPT)
 								local prompt = root:FindFirstChild("ProximityPrompt")
 								if prompt then
-									fireproximityprompt(prompt)
+									-- Coba ambil berulang kali sampai item hilang
+									for i = 1, 15 do -- Spam 15x max
+										if not root.Parent or not prompt.Parent then break end -- Berhasil diambil (hilang)
+										fireproximityprompt(prompt)
+										task.wait(0.1) -- Jeda antar spam
+									end
 								end
 								
-								task.wait(0.5) -- Tunggu proses ambil
+								task.wait(0.2) -- Jeda dikit
 								
-								-- 3. Return to Base (SpawnLocation1) -10 Studs
+								-- 3. Return to Base (Hanya jika berhasil/selesai)
 								local base = workspace:FindFirstChild("SpawnLocation1")
 								if base then
 									hrp.CFrame = CFrame.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
 									hrp.AssemblyLinearVelocity = Vector3.zero
 								end
 								
-								task.wait(1) -- Tunggu aman di base sebelum cari lagi
+								task.wait(1.5) -- Tunggu aman di base (Cooldown)
 								break -- Break loop biar satu-satu
 							end
 						end
@@ -845,13 +852,13 @@ CreateToggle("Auto Divine (Take & Return)", function(toggled)
 	end
 end)
 
-CreateToggle("Auto Common (Take & Return)", function(toggled)
-	autoSecretUndergroundEnabled = toggled
+CreateToggle("Auto Uncommon (Fix Loop)", function(toggled)
+	autoUncommonUndergroundEnabled = toggled
 	toggleUndergroundPlatform(toggled) -- Safety Platform
 	
-	if autoSecretUndergroundEnabled then
+	if autoUncommonUndergroundEnabled then
 		task.spawn(function()
-			while autoSecretUndergroundEnabled do
+			while autoUncommonUndergroundEnabled do
 				task.wait(0.5) -- Loop scan
 				
 				local folder = workspace:FindFirstChild("ActiveLuckyBlocks")
@@ -859,30 +866,37 @@ CreateToggle("Auto Common (Take & Return)", function(toggled)
 				
 				if folder and hrp then
 					for _, model in pairs(folder:GetChildren()) do
-						-- Cek Nama mengandung "Secret"
-						if string.find(model.Name, "Common") then
+						-- Cek Nama mengandung "Uncommon"
+						if string.find(model.Name, "Uncommon") then
 							local root = model:FindFirstChild("RootPart")
 							if root then
 								-- 1. Teleport ke Block (-10 Studs)
 								hrp.CFrame = CFrame.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
 								hrp.AssemblyLinearVelocity = Vector3.zero
 								
-								-- 2. Ambil Block
+								task.wait(0.2) -- Physics settle
+								
+								-- 2. Ambil Block (SPAM PROMPT)
 								local prompt = root:FindFirstChild("ProximityPrompt")
 								if prompt then
-									fireproximityprompt(prompt)
+									-- Coba ambil berulang kali sampai item hilang
+									for i = 1, 15 do -- Spam 15x max
+										if not root.Parent or not prompt.Parent then break end -- Berhasil diambil (hilang)
+										fireproximityprompt(prompt)
+										task.wait(0.1) -- Jeda antar spam
+									end
 								end
 								
-								task.wait(1) -- Tunggu proses ambil
+								task.wait(0.2) -- Jeda dikit
 								
-								-- 3. Return to Base (SpawnLocation1) -10 Studs
+								-- 3. Return to Base (Hanya jika berhasil/selesai)
 								local base = workspace:FindFirstChild("SpawnLocation1")
 								if base then
 									hrp.CFrame = CFrame.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
 									hrp.AssemblyLinearVelocity = Vector3.zero
 								end
 								
-								task.wait(2) -- Tunggu aman di base sebelum cari lagi
+								task.wait(1.5) -- Tunggu aman di base (Cooldown)
 								break -- Break loop biar satu-satu
 							end
 						end
@@ -1087,8 +1101,8 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	end
 end)
 
--- [NEW] TEST FEATURE: Common Brainrot Underground
-CreateToggle("TEST Underground (Epic LUCKBLOCK)", function(toggled)
+-- [NEW] TEST FEATURE: Common Brainrot Underground + Return Base
+CreateToggle("TEST Underground (Common + Return)", function(toggled)
 	autoTestCommonEnabled = toggled
 	toggleUndergroundPlatform(toggled) -- Gunakan logic platform underground yang sama
 	
@@ -1096,28 +1110,35 @@ CreateToggle("TEST Underground (Epic LUCKBLOCK)", function(toggled)
 		task.spawn(function()
 			while autoTestCommonEnabled do
 				task.wait(0.1)
-				-- Path: Workspace -> ActiveBrainrots -> Common -> (Model) -> Root
-				local folder = workspace:FindFirstChild("ActiveLuckyBlocks") and workspace.ActiveBrainrots:FindFirstChild("NaturalSpawnLuckyBlock_Epic")
+				local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild("Common")
 				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 				
 				if folder and hrp then
 					for _, model in pairs(folder:GetChildren()) do
-						-- Pastikan ada Root part
-						local root = model:FindFirstChild("RootPart")
+						local root = model:FindFirstChild("Root")
 						if root then
-							-- Teleport ke BAWAH Brainrot -10 Studs
+							-- 1. Teleport ke BAWAH Brainrot -10 Studs
 							local targetPos = root.Position
 							hrp.CFrame = CFrame.new(targetPos.X, targetPos.Y - 10, targetPos.Z)
-							
 							hrp.AssemblyLinearVelocity = Vector3.zero
-							hrp.AssemblyAngularVelocity = Vector3.zero
 							
-							-- Coba ambil (biasanya pakai prompt, tapi ini test posisi)
-							-- Kita fire prompt kalau ada
-							local prompt = root:FindFirstChild("ProximityPrompt")
+							-- 2. Ambil
+							local prompt = root:FindFirstChild("TakePrompt")
 							if prompt then
 								fireproximityprompt(prompt)
 							end
+							
+							task.wait(0.5) -- Tunggu ambil
+							
+							-- 3. Return to Base (UPDATED)
+							local base = workspace:FindFirstChild("SpawnLocation1")
+							if base then
+								hrp.CFrame = CFrame.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+								hrp.AssemblyLinearVelocity = Vector3.zero
+							end
+							
+							task.wait(1) -- Cooldown di base
+							break -- Break loop biar satu-satu
 						end
 					end
 				end
@@ -1324,4 +1345,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Lucky Block Underground + Return Base) Loaded")
+print("✅ Dj Hub Remastered (Fixed Loop + Uncommon Added) Loaded")
