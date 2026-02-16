@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Long Range Brainrot & Fixed Deposit Timing
+--// Update: dsadwdsawdsawLong Range Brainrot & Fixed Deposit Timing & Auto Claim Ticket (TP Spawn)
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -96,7 +96,7 @@ end
 -- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 360, 0, 400) 
+MainFrame.Size = UDim2.new(0, 360, 0, 420) -- Slightly increased height
 MainFrame.Position = UDim2.new(0.5, -180, 0.5, -200)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.35 
@@ -308,12 +308,15 @@ local noclipOn = false
 local noclipConn = nil
 local ESP = { enabled = {}, connections = {}, markers = {} }
 local fastInteractEnabled = false 
-local longRangeBrainrotEnabled = false -- [NEW] Variable
+local longRangeBrainrotEnabled = false
 local ftConnection = nil
 local activeInteractConnections = {} 
-local activeLongRangeConnections = {} -- [NEW] Tracker
+local activeLongRangeConnections = {}
 local autoConsoleEnabled = false
 local autoTicketEnabled = false
+local autoClaimTicketEnabled = false -- [NEW]
+local claimTicketConnection = nil -- [NEW]
+
 local autoValentineEnabled = false 
 local autoDepositEnabled = false
 local isDepositing = false 
@@ -899,6 +902,73 @@ CreateToggle("Auto Tickets", function(toggled)
 	end
 end)
 
+-- [NEW] Auto Claim Ticket (Teleport Mode)
+CreateToggle("Auto Claim Ticket (TP Spawn)", function(toggled)
+	autoClaimTicketEnabled = toggled
+	
+	-- Fungsi Eksekusi Claim
+	local function processTicket(model)
+		if not autoClaimTicketEnabled then return end
+		
+		task.spawn(function()
+			-- Tunggu sebentar agar part tiket benar-benar load
+			local part = model:WaitForChild("Ticket", 5) 
+			local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+			
+			if part and hrp then
+				-- 1. Teleport ke atas tiket (Ketinggian 78 Studs)
+				local ticketPos = part.Position
+				local targetCFrame = CFrame.new(ticketPos.X, ticketPos.Y + 78, ticketPos.Z)
+				
+				hrp.CFrame = targetCFrame
+				
+				-- Stop velocity agar tidak jatuh/terlempar
+				hrp.AssemblyLinearVelocity = Vector3.zero
+				hrp.AssemblyAngularVelocity = Vector3.zero
+				
+				task.wait(0.2) -- Jeda sedikit untuk sinkronisasi posisi
+				
+				-- 2. Ambil Tiket (Logic Auto Tickets)
+				if part:FindFirstChild("TouchInterest") then
+					if firetouchinterest then
+						firetouchinterest(hrp, part, 0)
+						firetouchinterest(hrp, part, 1)
+					else
+						-- Fallback jika exploit tidak support firetouchinterest
+						-- Kita tarik tiketnya ke atas (ke arah player) karena player ada di langit
+						part.CFrame = hrp.CFrame 
+					end
+				end
+			end
+		end)
+	end
+
+	if autoClaimTicketEnabled then
+		local folder = workspace:FindFirstChild("ArcadeEventTickets")
+		if folder then
+			-- Cek tiket yang sudah ada
+			for _, child in pairs(folder:GetChildren()) do
+				if child.Name == "Ticket" then
+					processTicket(child)
+				end
+			end
+			
+			-- Cek tiket yang baru spawn (Realtime)
+			claimTicketConnection = folder.ChildAdded:Connect(function(child)
+				if child.Name == "Ticket" then
+					processTicket(child)
+				end
+			end)
+		end
+	else
+		-- Matikan koneksi event jika fitur dimatikan
+		if claimTicketConnection then
+			claimTicketConnection:Disconnect()
+			claimTicketConnection = nil
+		end
+	end
+end)
+
 --=============================================================================
 --// VALENTINE EVENT
 --=============================================================================
@@ -1086,4 +1156,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Long Range Brainrot + Fixed Deposit Timing) Loaded")
+print("✅ Dj Hub Remastered (Full Version + Auto Claim Ticket TP) Loaded")
