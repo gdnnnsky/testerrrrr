@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: Lucky Block Underground (Take & Return Base) + Unlimited Zoom
+--// Update: dsaaaaaaaaaaaaaaaaaaaaLucky Block Underground (Take & Return Base) + Unlimited Zoom
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -864,7 +864,7 @@ CreateToggle("Auto Secret (Take & Return)", function(toggled)
 							local root = model:FindFirstChild("RootPart")
 							if root then
 								-- 1. Teleport ke Block (-10 Studs)
-								hrp.CFrame = CFrame.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
+								hrp.CFrame = CFrame.new(root.Position.X, root.Position.Y - 13, root.Position.Z)
 								hrp.AssemblyLinearVelocity = Vector3.zero
 								
 								-- 2. Ambil Block
@@ -878,7 +878,7 @@ CreateToggle("Auto Secret (Take & Return)", function(toggled)
 								-- 3. Return to Base (SpawnLocation1) -10 Studs
 								local base = workspace:FindFirstChild("SpawnLocation1")
 								if base then
-									hrp.CFrame = CFrame.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+									hrp.CFrame = CFrame.new(base.Position.X, base.Position.Y - 13, base.Position.Z)
 									hrp.AssemblyLinearVelocity = Vector3.zero
 								end
 								
@@ -1097,7 +1097,7 @@ CreateToggle("TEST Underground (Common Brainrot)", function(toggled)
 			while autoTestCommonEnabled do
 				task.wait(0.1)
 				-- Path: Workspace -> ActiveBrainrots -> Common -> (Model) -> Root
-				local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild("Common")
+				local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild("Secret")
 				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 				
 				if folder and hrp then
