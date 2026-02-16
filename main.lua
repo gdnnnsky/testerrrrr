@@ -1,8 +1,9 @@
---// Dj Hub (Ultimate Version - Resized UI Fixed + Logic Update)
+--// Dj Hub (Ultimate Version - Resized UI Fixed + Logic Update + Anti AFK Added)
 --// Update Log: 
 --// 1. Auto Claim Ticket now uses SLIDE logic (Safe from object damage).
 --// 2. Lucky Block Slide now chains up to 3 blocks before returning to base.
 --// 3. Added ActionLock system so features don't conflict/glitch.
+--// 4. Added Anti-AFK Feature (Bypass 20 min kick).
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -12,6 +13,7 @@ local StarterGui = game:GetService("StarterGui")
 local SoundService = game:GetService("SoundService")
 local Lighting = game:GetService("Lighting")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local VirtualUser = game:GetService("VirtualUser") -- Added Service for Anti-AFK
 
 local lp = Players.LocalPlayer
 
@@ -349,6 +351,9 @@ local followConnection = nil
 
 -- Variables for AUTO EQUIP
 local autoEquipEnabled = false
+
+-- Variables for ANTI AFK
+local antiAfkConnection = nil
 
 --=============================================================================
 --// LOGIC FUNCTIONS
@@ -1404,6 +1409,35 @@ CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 end)
 
 CreateSection("MISC")
+
+-- [NEW FEATURE] ANTI AFK TOGGLE
+CreateToggle("Anti AFK (20m Bypass)", function(toggled)
+	if toggled then
+		-- Connect to the idle signal
+		antiAfkConnection = lp.Idled:Connect(function()
+			VirtualUser:CaptureController()
+			VirtualUser:ClickButton2(Vector2.new()) -- Simulates a right click to reset timer
+		end)
+		
+		StarterGui:SetCore("SendNotification", {
+			Title = "Anti AFK ON",
+			Text = "You won't get kicked for idling.",
+			Duration = 3
+		})
+	else
+		-- Disconnect and clean up
+		if antiAfkConnection then
+			antiAfkConnection:Disconnect()
+			antiAfkConnection = nil
+		end
+		
+		StarterGui:SetCore("SendNotification", {
+			Title = "Anti AFK OFF",
+			Text = "Idle kick is back to normal.",
+			Duration = 3
+		})
+	end
+end)
 
 CreateToggle("Fast Interact (Global)", function(toggled)
 	fastInteractEnabled = toggled
