@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Lag Reducer Added)
 --// Features: Realtime Follow + Smart Auto Equip + Arcade ESP + Reduce Lag + Valentine Auto Collect & Deposit
---// Update: das wdsadfw Block Underground (Take & Return Base) + Unlimited Zoom
+--// Update: awwwwwwwwwwwwock Underground (Take & Return Base) + Unlimited Zoom
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -873,7 +873,7 @@ CreateToggle("Auto Common (Take & Return)", function(toggled)
 									fireproximityprompt(prompt)
 								end
 								
-								task.wait(0.5) -- Tunggu proses ambil
+								task.wait(1) -- Tunggu proses ambil
 								
 								-- 3. Return to Base (SpawnLocation1) -10 Studs
 								local base = workspace:FindFirstChild("SpawnLocation1")
@@ -882,7 +882,7 @@ CreateToggle("Auto Common (Take & Return)", function(toggled)
 									hrp.AssemblyLinearVelocity = Vector3.zero
 								end
 								
-								task.wait(1) -- Tunggu aman di base sebelum cari lagi
+								task.wait(2) -- Tunggu aman di base sebelum cari lagi
 								break -- Break loop biar satu-satu
 							end
 						end
@@ -1088,7 +1088,7 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 end)
 
 -- [NEW] TEST FEATURE: Common Brainrot Underground
-CreateToggle("TEST Underground (Epic Brainrot)", function(toggled)
+CreateToggle("TEST Underground (Epic LUCKBLOCK)", function(toggled)
 	autoTestCommonEnabled = toggled
 	toggleUndergroundPlatform(toggled) -- Gunakan logic platform underground yang sama
 	
@@ -1097,13 +1097,13 @@ CreateToggle("TEST Underground (Epic Brainrot)", function(toggled)
 			while autoTestCommonEnabled do
 				task.wait(0.1)
 				-- Path: Workspace -> ActiveBrainrots -> Common -> (Model) -> Root
-				local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild("Epic")
+				local folder = workspace:FindFirstChild("ActiveLuckyBlocks") and workspace.ActiveBrainrots:FindFirstChild("Epic")
 				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 				
 				if folder and hrp then
 					for _, model in pairs(folder:GetChildren()) do
 						-- Pastikan ada Root part
-						local root = model:FindFirstChild("Root")
+						local root = model:FindFirstChild("RootPart")
 						if root then
 							-- Teleport ke BAWAH Brainrot -10 Studs
 							local targetPos = root.Position
@@ -1114,7 +1114,7 @@ CreateToggle("TEST Underground (Epic Brainrot)", function(toggled)
 							
 							-- Coba ambil (biasanya pakai prompt, tapi ini test posisi)
 							-- Kita fire prompt kalau ada
-							local prompt = root:FindFirstChild("TakePrompt")
+							local prompt = root:FindFirstChild("ProximityPrompt")
 							if prompt then
 								fireproximityprompt(prompt)
 							end
