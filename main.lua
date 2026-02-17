@@ -1,9 +1,8 @@
---// Dj Hub (Ultimate Version - Valentine Underground Update)
+--// Dj Hub (Ultimate Version - Valentine Logic Fix)
 --// Update Log: 
---// 1. Replaced Auto Collect Valentine with "Auto Coin Valentine (Underground)".
---// 2. Added Smart Pathfinding (Base <-> Celestial).
---// 3. Added Magnet Logic (280 Studs range).
---// 4. ActionLock Logic updated for smooth combos.
+--// 1. Fixed "Auto Coin Valentine" logic to only slide when Event is ACTIVE.
+--// 2. Added detection for 'ValentinesCoinParts' -> 'ValentinesCoin'.
+--// 3. Script pauses movement automatically when event ends and resumes when it starts.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -1223,6 +1222,7 @@ end)
 CreateSection("VALENTINE EVENT")
 
 -- [NEW LOGIC] Auto Coin Valentine (Underground + Magnet)
+-- LOGIC: HANYA JALAN JIKA ADA FOLDER 'ValentinesCoinParts' DAN 'ValentinesCoin'
 CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 	autoCoinValentineEnabled = toggled
 	
@@ -1239,26 +1239,29 @@ CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 	end
 
 	-- 1. MAGNET LOOP (Parallel)
-	-- collects coins within 280 studs while moving
+	-- collects coins within 280 studs while moving (ONLY IF COINS EXIST)
 	task.spawn(function()
 		while autoCoinValentineEnabled do
 			task.wait(0.1) -- Fast loop
-			local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 			local coinFolder = workspace:FindFirstChild("ValentinesCoinParts")
 			
-			if hrp and coinFolder then
-				for _, item in pairs(coinFolder:GetChildren()) do
-					-- Check distance (280 Studs Magnet)
-					local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
-					if part then
-						local dist = (part.Position - hrp.Position).Magnitude
-						if dist <= 280 then
-							if firetouchinterest then
-								firetouchinterest(hrp, part, 0)
-								firetouchinterest(hrp, part, 1)
-							else
-								-- Fallback (should not happen if executed properly)
-								part.CFrame = hrp.CFrame
+			if coinFolder and #coinFolder:GetChildren() > 0 then
+				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					for _, item in pairs(coinFolder:GetChildren()) do
+						-- Specific name check based on prompt: ValentinesCoin
+						if item.Name == "ValentinesCoin" then 
+							local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
+							if part then
+								local dist = (part.Position - hrp.Position).Magnitude
+								if dist <= 280 then
+									if firetouchinterest then
+										firetouchinterest(hrp, part, 0)
+										firetouchinterest(hrp, part, 1)
+									else
+										part.CFrame = hrp.CFrame
+									end
+								end
 							end
 						end
 					end
@@ -1267,7 +1270,7 @@ CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 		end
 	end)
 
-	-- 2. MOVEMENT LOOP (Slide -> Wait -> Return)
+	-- 2. MOVEMENT LOOP (Event Detection Logic)
 	task.spawn(function()
 		while autoCoinValentineEnabled do
 			task.wait(0.2)
@@ -1275,45 +1278,60 @@ CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 			-- Wait for ActionLock (Combo with Lucky Block)
 			if actionLock then continue end
 
-			-- Dynamic Search for Celestial Part
-			local targetPart = nil
-			for _, folder in pairs(workspace:GetChildren()) do
-				if string.find(folder.Name, "_SharedInstances") then -- Matches "Default_SharedInstances", "Money_...", etc.
-					local floors = folder:FindFirstChild("Floors")
-					if floors then
-						targetPart = floors:FindFirstChild("Celestial")
-						if targetPart then break end
-					end
-				end
+			-- DETECT EVENT STATUS
+			local coinFolder = workspace:FindFirstChild("ValentinesCoinParts")
+			local isEventActive = false
+			
+			-- Cek apakah folder ada dan didalamnya ada "ValentinesCoin"
+			if coinFolder and coinFolder:FindFirstChild("ValentinesCoin") then
+				isEventActive = true
 			end
 
-			local base = workspace:FindFirstChild("SpawnLocation1")
-
-			if targetPart and base and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+			if isEventActive then
+				-- >>> EVENT ACTIVE: RUN SLIDE LOGIC <<<
 				
-				-- Step A: Lock Action
-				actionLock = true 
+				-- Dynamic Search for Celestial Part
+				local targetPart = nil
+				for _, folder in pairs(workspace:GetChildren()) do
+					if string.find(folder.Name, "_SharedInstances") then 
+						local floors = folder:FindFirstChild("Floors")
+						if floors then
+							targetPart = floors:FindFirstChild("Celestial")
+							if targetPart then break end
+						end
+					end
+				end
 
-				-- Step B: Slide to Celestial
-				local targetPos = Vector3.new(targetPart.Position.X, targetPart.Position.Y - 10, targetPart.Position.Z)
-				slideToPosition(targetPos)
+				local base = workspace:FindFirstChild("SpawnLocation1")
 
-				-- Step C: Wait 5 Seconds (Collecting happens in Magnet Loop)
-				task.wait(5)
+				if targetPart and base and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+					
+					actionLock = true -- LOCK
 
-				-- Step D: Slide Back to Base
-				local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
-				slideToPosition(basePos)
+					-- Slide to Celestial
+					local targetPos = Vector3.new(targetPart.Position.X, targetPart.Position.Y - 10, targetPart.Position.Z)
+					slideToPosition(targetPos)
 
-				-- Step E: Unlock Action
-				actionLock = false
+					-- Wait 5 Seconds (Collecting happens in Magnet Loop)
+					task.wait(5)
 
-				-- Step F: Wait 10 Seconds at Base
-				task.wait(10)
-				
+					-- Slide Back to Base
+					local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+					slideToPosition(basePos)
+
+					actionLock = false -- UNLOCK
+
+					-- Wait 10 Seconds at Base
+					task.wait(10)
+					
+				else
+					-- Struktur map tidak ketemu, tunggu sebentar
+					task.wait(2)
+				end
 			else
-				-- If structure not found, wait and retry
-				task.wait(2)
+				-- >>> EVENT INACTIVE: STOP SLIDING & WAIT <<<
+				-- Coin tidak ada, diam saja menunggu event mulai
+				task.wait(1)
 			end
 		end
 	end)
@@ -1475,4 +1493,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Valentine Underground + Magnet Updated) Loaded")
+print("✅ Dj Hub Remastered (Valentine Underground + Event Detection Fixed) Loaded")
