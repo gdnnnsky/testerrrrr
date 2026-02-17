@@ -3,7 +3,8 @@
 --// 1. "Reduce Lag+" now cleans ReplicatedStorage -> Assets -> MapVariants.
 --// 2. Ensures future maps load without lag (One-time activation).
 --// 3. Strict Rules: Keep 'Ground' (Maps) & 'Celestial' (SharedInstances).
---// 4. Added "Server Hop" feature.
+--// 4. Added "Server Hop" (Smart Search - Not Full).
+--// 5. GUI Auto-Scale Fix for Cloud Gaming/Small Screens.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -14,7 +15,9 @@ local SoundService = game:GetService("SoundService")
 local Lighting = game:GetService("Lighting")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local VirtualUser = game:GetService("VirtualUser") 
-local ReplicatedStorage = game:GetService("ReplicatedStorage") -- Added Service
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
 
 local lp = Players.LocalPlayer
 
@@ -57,6 +60,29 @@ ScreenGui.Name = "DjHubRemastered"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parent
 
+-- [FIX GUI] Auto Scale Logic
+local uiScale = Instance.new("UIScale")
+uiScale.Parent = ScreenGui
+
+local function updateScale()
+	local camera = workspace.CurrentCamera
+	if camera then
+		-- Jika layar kecil (Cloud Gaming/HP Low Res), kecilkan UI
+		if camera.ViewportSize.Y < 500 then
+			uiScale.Scale = 0.65 -- Kecilkan jadi 65%
+		elseif camera.ViewportSize.Y < 720 then
+			uiScale.Scale = 0.8 -- Kecilkan jadi 80%
+		else
+			uiScale.Scale = 1.0 -- Normal
+		end
+	end
+end
+
+-- Jalankan update scale saat start dan saat layar berubah
+updateScale()
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+-- [END FIX GUI]
+
 local function makeDraggable(frame, handle)
 	handle = handle or frame
 	local dragging, dragInput, dragStart, startPos
@@ -96,12 +122,17 @@ end
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 360, 0, 350) 
-MainFrame.Position = UDim2.new(0.5, -180, 0.5, -175)
+-- [FIX SIZE] Menggunakan AnchorPoint agar posisi selalu di tengah (Responsive)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5) 
+MainFrame.Size = UDim2.new(0, 340, 0, 320) -- Sedikit diperkecil agar pas
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0) -- Posisi tepat di tengah layar
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.35 
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
+
+-- Tambahkan UIScale lokal ke MainFrame juga untuk kontrol ganda
+local mainScale = Instance.new("UIScale", MainFrame)
 
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
@@ -1489,47 +1520,46 @@ CreateButton("Delete Safe Walls", function()
 end)
 
 --=============================================================================
---// SERVER FEATURES (ADDED AS REQUESTED)
+--// SERVER FEATURES (FIXED LOGIC)
 --=============================================================================
 
 CreateSection("SERVER")
 
 CreateButton("Cari Server Lain (Hop)", function()
-	local TeleportService = game:GetService("TeleportService")
-	local HttpService = game:GetService("HttpService")
-	
+	-- [FIX HOP] Logic baru: Loop server, cari yang tidak penuh (playing < max)
 	StarterGui:SetCore("SendNotification", {
 		Title = "Server Hop",
-		Text = "Mencari server lain...",
+		Text = "Mencari server kosong (Scanning)...",
 		Duration = 2
 	})
 	
 	local function Hop()
-		-- Fetch server list
+		-- Ambil 100 server
 		local req = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Desc&limit=100")
 		local body = HttpService:JSONDecode(req)
 		
 		if body and body.data then
-			local servers = {}
 			for _, v in ipairs(body.data) do
-				-- Cari server yang:
-				-- 1. Bukan server saat ini (JobId beda)
-				-- 2. Tidak penuh (playing < maxPlayers)
-				if type(v) == "table" and v.playing and v.maxPlayers and v.playing < v.maxPlayers and v.id ~= game.JobId then
-					table.insert(servers, v.id)
+				-- Cek jika server valid, bukan jobid sendiri, DAN belum penuh (slot sisa minimal 1)
+				if type(v) == "table" and v.playing and v.maxPlayers and v.playing < (v.maxPlayers - 1) and v.id ~= game.JobId then
+					
+					StarterGui:SetCore("SendNotification", {
+						Title = "Server Found!",
+						Text = "Join: " .. v.playing .. "/" .. v.maxPlayers,
+						Duration = 2
+					})
+					
+					TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id, lp)
+					return -- Berhenti loop jika ketemu
 				end
 			end
 			
-			if #servers > 0 then
-				-- Teleport ke server acak yang valid
-				TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], game.Players.LocalPlayer)
-			else
-				StarterGui:SetCore("SendNotification", {
-					Title = "Server Hop",
-					Text = "Server penuh/gagal, coba lagi!",
-					Duration = 2
-				})
-			end
+			-- Jika loop selesai tapi tidak ketemu server kosong
+			StarterGui:SetCore("SendNotification", {
+				Title = "Hop Gagal",
+				Text = "Semua server di list penuh, coba lagi!",
+				Duration = 3
+			})
 		end
 	end
 	
@@ -1602,4 +1632,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (Source Cleaning Fix) Loaded")
+print("✅ Dj Hub Remastered (GUI & Hop Fix) Loaded")
