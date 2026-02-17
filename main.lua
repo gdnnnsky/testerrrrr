@@ -1,8 +1,9 @@
---// Dj Hub (Ultimate Version - Valentine Logic Fix)
+--// Dj Hub (Ultimate Version - Optimize Lag Fixed)
 --// Update Log: 
---// 1. Fixed "Auto Coin Valentine" logic to only slide when Event is ACTIVE.
---// 2. Added detection for 'ValentinesCoinParts' -> 'ValentinesCoin'.
---// 3. Script pauses movement automatically when event ends and resumes when it starts.
+--// 1. "Reduce Lag+" logic updated to specific Map Cleaning requirements.
+--// 2. Preserves 'Celestial' in 'Floors' (SharedInstances).
+--// 3. Preserves 'Ground' in '*Map'.
+--// 4. Auto Coin Valentine Logic remains untouched.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -316,7 +317,7 @@ local actionLock = false
 -- [NEW] Underground Mode Variables
 local autoClaimTicketEnabled = false 
 local autoTestCommonEnabled = false
-local autoCoinValentineEnabled = false -- New Variable
+local autoCoinValentineEnabled = false 
 
 -- [NEW] Lucky Block Variables
 local slideSettings = {
@@ -959,19 +960,58 @@ end)
 CreateSection("OPTIMIZATION")
 
 CreateButton("Reduce Lag+ (Delete Maps)", function()
-	local targets = {
+	-- 1. Simple Targets (Delete completely)
+	local simpleTargets = {
 		"ActiveBrainrots", "ActiveTsunamis", "Bases",
 		"Leaderboards", "Misc", "SellPoint", "SpawnMachines",
-		"ArcadeWheel", "EventTimers", "LimitedShop", "UpgradeShop", "WaveMachine"
+		"ArcadeWheel", "EventTimers", "LimitedShop", "UpgradeShop", "WaveMachine",
+		"Debris", "EventParts", "SectionHitbox" -- New targets
 	}
 	
-	for _, name in pairs(targets) do
+	for _, name in pairs(simpleTargets) do
 		local obj = workspace:FindFirstChild(name)
-		if obj then 
-			pcall(function() obj:Destroy() end)
+		if obj then pcall(function() obj:Destroy() end) end
+	end
+	
+	-- 2. Clean SharedInstances (Keep Floors -> Celestial)
+	for _, folder in pairs(workspace:GetChildren()) do
+		if string.find(folder.Name, "_SharedInstances") then
+			for _, child in pairs(folder:GetChildren()) do
+				if child.Name == "Floors" then
+					-- Inside Floors: Keep Celestial only
+					for _, floorPart in pairs(child:GetChildren()) do
+						if floorPart.Name ~= "Celestial" then
+							pcall(function() floorPart:Destroy() end)
+						end
+					end
+				else
+					-- Delete AllowedSpaces, Gaps, VIPWalls, WaveSpawn, etc.
+					pcall(function() child:Destroy() end)
+				end
+			end
 		end
 	end
 	
+	-- 3. Clean Map Models (Keep Ground only)
+	local mapNames = {
+		"DefaultMap", "ArcadeMap", "MarsMap", "MoneyMap", 
+		"RadioactiveMap", "ShortMap", "ValentinesMap"
+	}
+	
+	for _, obj in pairs(workspace:GetChildren()) do
+		local isMap = false
+		for _, name in pairs(mapNames) do if obj.Name == name then isMap = true break end end
+		
+		if isMap then
+			for _, child in pairs(obj:GetChildren()) do
+				if child.Name ~= "Ground" then
+					pcall(function() child:Destroy() end)
+				end
+			end
+		end
+	end
+	
+	-- 4. Clean Lighting
 	for _, v in pairs(Lighting:GetChildren()) do
 		if not v:IsA("Script") then
 			pcall(function() v:Destroy() end)
@@ -984,7 +1024,7 @@ CreateButton("Reduce Lag+ (Delete Maps)", function()
 	
 	StarterGui:SetCore("SendNotification", {
 		Title = "LAG REDUCED",
-		Text = "Maps & Lighting deleted for FPS Boost!",
+		Text = "Advanced Map Cleaning Done!",
 		Duration = 3
 	})
 end)
@@ -1493,4 +1533,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Valentine Underground + Event Detection Fixed) Loaded")
+print("✅ Dj Hub Remastered (Optimize Lag Fixed) Loaded")
