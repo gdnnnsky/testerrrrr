@@ -993,7 +993,7 @@ CreateSection("OPTIMIZATION")
 
 CreateButton("Reduce Lag+ (Delete Maps)", function()
 	local targets = {
-		"ActiveBrainrots", "ActiveLuckyBlocks", "ActiveTsunamis", "Bases",
+		"ActiveBrainrots", "ActiveTsunamis", "Bases",
 		"Leaderboards", "Misc", "SellPoint", "SpawnMachines",
 		"ArcadeWheel", "EventTimers", "LimitedShop", "UpgradeShop", "WaveMachine"
 	}
