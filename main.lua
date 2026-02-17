@@ -1,9 +1,8 @@
---// Dj Hub (Ultimate Version - Optimize Lag Fixed)
+--// Dj Hub (Ultimate Version - Source Cleaning Fix)
 --// Update Log: 
---// 1. "Reduce Lag+" logic updated to specific Map Cleaning requirements.
---// 2. Preserves 'Celestial' in 'Floors' (SharedInstances).
---// 3. Preserves 'Ground' in '*Map'.
---// 4. Auto Coin Valentine Logic remains untouched.
+--// 1. "Reduce Lag+" now cleans ReplicatedStorage -> Assets -> MapVariants.
+--// 2. Ensures future maps load without lag (One-time activation).
+--// 3. Strict Rules: Keep 'Ground' (Maps) & 'Celestial' (SharedInstances).
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -14,6 +13,7 @@ local SoundService = game:GetService("SoundService")
 local Lighting = game:GetService("Lighting")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local VirtualUser = game:GetService("VirtualUser") 
+local ReplicatedStorage = game:GetService("ReplicatedStorage") -- Added Service
 
 local lp = Players.LocalPlayer
 
@@ -960,58 +960,78 @@ end)
 CreateSection("OPTIMIZATION")
 
 CreateButton("Reduce Lag+ (Delete Maps)", function()
-	-- 1. Simple Targets (Delete completely)
+	
+	-- Function: Cleaning Logic for SharedInstances
+	local function cleanSharedInstances(container)
+		for _, folder in pairs(container:GetChildren()) do
+			if string.find(folder.Name, "_SharedInstances") then
+				for _, child in pairs(folder:GetChildren()) do
+					if child.Name == "Floors" then
+						-- Inside Floors: Keep Celestial only
+						for _, floorPart in pairs(child:GetChildren()) do
+							if floorPart.Name ~= "Celestial" then
+								pcall(function() floorPart:Destroy() end)
+							end
+						end
+					else
+						-- Delete AllowedSpaces, Gaps, VIPWalls, WaveSpawn, etc.
+						pcall(function() child:Destroy() end)
+					end
+				end
+			end
+		end
+	end
+
+	-- Function: Cleaning Logic for Map Models
+	local function cleanMapModel(mapModel)
+		for _, child in pairs(mapModel:GetChildren()) do
+			if child.Name ~= "Ground" then
+				pcall(function() child:Destroy() end)
+			end
+		end
+	end
+
+	-- 1. CLEAN WORKSPACE (Immediate Relief)
+	
+	-- Global Junk
 	local simpleTargets = {
 		"ActiveBrainrots", "ActiveTsunamis", "Bases",
 		"Leaderboards", "Misc", "SellPoint", "SpawnMachines",
 		"ArcadeWheel", "EventTimers", "LimitedShop", "UpgradeShop", "WaveMachine",
-		"Debris", "EventParts", "SectionHitbox" -- New targets
+		"Debris", "EventParts", "SectionHitbox"
 	}
-	
 	for _, name in pairs(simpleTargets) do
 		local obj = workspace:FindFirstChild(name)
 		if obj then pcall(function() obj:Destroy() end) end
 	end
 	
-	-- 2. Clean SharedInstances (Keep Floors -> Celestial)
-	for _, folder in pairs(workspace:GetChildren()) do
-		if string.find(folder.Name, "_SharedInstances") then
-			for _, child in pairs(folder:GetChildren()) do
-				if child.Name == "Floors" then
-					-- Inside Floors: Keep Celestial only
-					for _, floorPart in pairs(child:GetChildren()) do
-						if floorPart.Name ~= "Celestial" then
-							pcall(function() floorPart:Destroy() end)
-						end
-					end
-				else
-					-- Delete AllowedSpaces, Gaps, VIPWalls, WaveSpawn, etc.
-					pcall(function() child:Destroy() end)
-				end
-			end
-		end
-	end
+	-- SharedInstances in Workspace
+	cleanSharedInstances(workspace)
 	
-	-- 3. Clean Map Models (Keep Ground only)
-	local mapNames = {
-		"DefaultMap", "ArcadeMap", "MarsMap", "MoneyMap", 
-		"RadioactiveMap", "ShortMap", "ValentinesMap"
-	}
-	
+	-- Current Map in Workspace
 	for _, obj in pairs(workspace:GetChildren()) do
-		local isMap = false
-		for _, name in pairs(mapNames) do if obj.Name == name then isMap = true break end end
-		
-		if isMap then
-			for _, child in pairs(obj:GetChildren()) do
-				if child.Name ~= "Ground" then
-					pcall(function() child:Destroy() end)
-				end
-			end
+		if string.match(obj.Name, "Map") and obj:FindFirstChild("Ground") then
+			cleanMapModel(obj)
 		end
 	end
+
+	-- 2. CLEAN REPLICATED STORAGE (Prevent Future Lag)
+	-- Path: ReplicatedStorage -> Assets -> MapVariants
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	if assets then
+		local variants = assets:FindFirstChild("MapVariants")
+		if variants then
+			-- Iterate all map variants (ArcadeMap, ValentinesMap, etc.)
+			for _, mapVariant in pairs(variants:GetChildren()) do
+				cleanMapModel(mapVariant)
+			end
+		end
+		
+		-- Check for SharedInstances in Assets (if any)
+		cleanSharedInstances(assets)
+	end
 	
-	-- 4. Clean Lighting
+	-- 3. Clean Lighting
 	for _, v in pairs(Lighting:GetChildren()) do
 		if not v:IsA("Script") then
 			pcall(function() v:Destroy() end)
@@ -1023,8 +1043,8 @@ CreateButton("Reduce Lag+ (Delete Maps)", function()
 	Lighting.Brightness = 2
 	
 	StarterGui:SetCore("SendNotification", {
-		Title = "LAG REDUCED",
-		Text = "Advanced Map Cleaning Done!",
+		Title = "LAG REDUCED +",
+		Text = "Maps cleaned from Source (RS) & Workspace!",
 		Duration = 3
 	})
 end)
@@ -1533,4 +1553,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Optimize Lag Fixed) Loaded")
+print("✅ Dj Hub Remastered (Source Cleaning Fix) Loaded")
