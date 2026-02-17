@@ -3,6 +3,7 @@
 --// 1. "Reduce Lag+" now cleans ReplicatedStorage -> Assets -> MapVariants.
 --// 2. Ensures future maps load without lag (One-time activation).
 --// 3. Strict Rules: Keep 'Ground' (Maps) & 'Celestial' (SharedInstances).
+--// 4. Added "Server Hop" feature.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -1482,6 +1483,59 @@ end)
 
 CreateSection("MISC")
 
+CreateButton("Delete Safe Walls", function()
+	local walls = workspace:FindFirstChild("VIPWalls") or workspace:FindFirstChild("Wallses")
+	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
+end)
+
+--=============================================================================
+--// SERVER FEATURES (ADDED AS REQUESTED)
+--=============================================================================
+
+CreateSection("SERVER")
+
+CreateButton("Cari Server Lain (Hop)", function()
+	local TeleportService = game:GetService("TeleportService")
+	local HttpService = game:GetService("HttpService")
+	
+	StarterGui:SetCore("SendNotification", {
+		Title = "Server Hop",
+		Text = "Mencari server lain...",
+		Duration = 2
+	})
+	
+	local function Hop()
+		-- Fetch server list
+		local req = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Desc&limit=100")
+		local body = HttpService:JSONDecode(req)
+		
+		if body and body.data then
+			local servers = {}
+			for _, v in ipairs(body.data) do
+				-- Cari server yang:
+				-- 1. Bukan server saat ini (JobId beda)
+				-- 2. Tidak penuh (playing < maxPlayers)
+				if type(v) == "table" and v.playing and v.maxPlayers and v.playing < v.maxPlayers and v.id ~= game.JobId then
+					table.insert(servers, v.id)
+				end
+			end
+			
+			if #servers > 0 then
+				-- Teleport ke server acak yang valid
+				TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], game.Players.LocalPlayer)
+			else
+				StarterGui:SetCore("SendNotification", {
+					Title = "Server Hop",
+					Text = "Server penuh/gagal, coba lagi!",
+					Duration = 2
+				})
+			end
+		end
+	end
+	
+	pcall(Hop)
+end)
+
 CreateToggle("Anti AFK (20m Bypass)", function(toggled)
 	if toggled then
 		antiAfkConnection = lp.Idled:Connect(function()
@@ -1546,11 +1600,6 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 		lp.CameraMaxZoomDistance = 128 
 		lp.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Zoom
 	end
-end)
-
-CreateButton("Delete Safe Walls", function()
-	local walls = workspace:FindFirstChild("VIPWalls") or workspace:FindFirstChild("Wallses")
-	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
 print("✅ Dj Hub Remastered (Source Cleaning Fix) Loaded")
