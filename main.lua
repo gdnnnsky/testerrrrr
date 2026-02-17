@@ -1,9 +1,9 @@
---// Dj Hub (Ultimate Version - Resized UI Fixed + Logic Update + Anti AFK Added)
+--// Dj Hub (Ultimate Version - Valentine Underground Update)
 --// Update Log: 
---// 1. Auto Claim Ticket now uses SLIDE logic (Safe from object damage).
---// 2. Lucky Block Slide now chains up to 3 blocks before returning to base.
---// 3. Added ActionLock system so features don't conflict/glitch.
---// 4. Added Anti-AFK Feature (Bypass 20 min kick).
+--// 1. Replaced Auto Collect Valentine with "Auto Coin Valentine (Underground)".
+--// 2. Added Smart Pathfinding (Base <-> Celestial).
+--// 3. Added Magnet Logic (280 Studs range).
+--// 4. ActionLock Logic updated for smooth combos.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -13,7 +13,7 @@ local StarterGui = game:GetService("StarterGui")
 local SoundService = game:GetService("SoundService")
 local Lighting = game:GetService("Lighting")
 local ProximityPromptService = game:GetService("ProximityPromptService")
-local VirtualUser = game:GetService("VirtualUser") -- Added Service for Anti-AFK
+local VirtualUser = game:GetService("VirtualUser") 
 
 local lp = Players.LocalPlayer
 
@@ -32,7 +32,6 @@ local colors = {
 	shortcutOff = Color3.fromRGB(255, 50, 50)
 }
 
--- 1. Setup Parent
 local function pickGuiParent()
 	if lp then
 		local pg = lp:FindFirstChildOfClass("PlayerGui")
@@ -46,20 +45,17 @@ end
 local parent = pickGuiParent()
 if not parent then return end
 
--- Cleanup Old GUI
 pcall(function()
 	if parent:FindFirstChild("DjHubRemastered") then
 		parent.DjHubRemastered:Destroy()
 	end
 end)
 
--- 2. Create Main GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "DjHubRemastered"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parent
 
--- 3. Dragging Function
 local function makeDraggable(frame, handle)
 	handle = handle or frame
 	local dragging, dragInput, dragStart, startPos
@@ -97,7 +93,6 @@ local function makeDraggable(frame, handle)
 	end)
 end
 
--- 4. Main Window Construction
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 360, 0, 350) 
@@ -170,8 +165,6 @@ UIList.Padding = UDim.new(0, 6)
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
 
 makeDraggable(MainFrame, Header)
-
--- 5. Component Functions
 
 local function CreateToggle(text, callback, parentOverride)
 	local ToggleFrame = Instance.new("Frame")
@@ -262,7 +255,6 @@ local function CreateSection(text)
 	Sec.Parent = Container
 end
 
--- 6. Minimize Logic
 local minimized = false
 local MinIcon = Instance.new("TextButton")
 MinIcon.Name = "MiniIcon"
@@ -325,6 +317,7 @@ local actionLock = false
 -- [NEW] Underground Mode Variables
 local autoClaimTicketEnabled = false 
 local autoTestCommonEnabled = false
+local autoCoinValentineEnabled = false -- New Variable
 
 -- [NEW] Lucky Block Variables
 local slideSettings = {
@@ -339,27 +332,20 @@ local undergroundPlatform = nil
 local undergroundConnection = nil
 local undergroundFixedY = nil 
 
-local autoValentineEnabled = false 
 local autoDepositEnabled = false
 local isDepositing = false 
 local notifConfig = { Divine = false, Celestial = false, Common = false }
 local notifListeners = {}
 
--- Variables for FOLLOW PLAYER
 local followTarget = nil
 local followConnection = nil
-
--- Variables for AUTO EQUIP
 local autoEquipEnabled = false
-
--- Variables for ANTI AFK
 local antiAfkConnection = nil
 
 --=============================================================================
 --// LOGIC FUNCTIONS
 --=============================================================================
 
--- 1. Platform Logic (Standard)
 local function togglePlatformState(state)
 	if state then
 		if not pPart then
@@ -390,7 +376,7 @@ local function togglePlatformState(state)
 	end
 end
 
--- [NEW] Special Underground Platform Logic (-10 Studs) + FIXED FLOATING
+-- [NEW] Special Underground Platform Logic (-10 Studs)
 local function toggleUndergroundPlatform(state)
 	if state then
 		if not undergroundPlatform then 
@@ -446,7 +432,6 @@ local function slideToPosition(targetPos)
 	hrp.AssemblyLinearVelocity = Vector3.zero
 end
 
--- 2. Helper Logic: Check Item Name
 local function isTargetItem(tool, keyword)
 	if not tool:IsA("Tool") then return false end
 	if tool.ToolTip and string.find(tool.ToolTip, keyword) then return true end
@@ -455,7 +440,6 @@ local function isTargetItem(tool, keyword)
 	return false
 end
 
--- 3. ESP & Visuals
 local function removeMarker(obj)
 	local data = ESP.markers[obj]
 	if data then
@@ -601,8 +585,7 @@ local function toggleItemEsp(mode, folderName)
 	end
 end
 
--- 4. Follow Player Logic
-local TargetLabel -- Forward declaration
+local TargetLabel 
 
 local function StopFollowing()
 	if followConnection then
@@ -614,14 +597,13 @@ local function StopFollowing()
 end
 
 local function StartFollowing(targetPlayer)
-	StopFollowing() -- Clean old connection
+	StopFollowing()
 	if not targetPlayer then return end
 	
 	followTarget = targetPlayer
 	if TargetLabel then TargetLabel.Text = "Following: " .. targetPlayer.Name end
 	
 	followConnection = RunService.RenderStepped:Connect(function()
-		-- [NEW] Pause Following if Deposit or Action is running
 		if isDepositing or actionLock then return end
 
 		if followTarget and followTarget.Character and followTarget.Character:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
@@ -643,7 +625,6 @@ local function StartFollowing(targetPlayer)
 	end)
 end
 
--- 5. Auto Equip Logic
 task.spawn(function()
 	while true do
 		task.wait(0.2) 
@@ -677,7 +658,6 @@ task.spawn(function()
 	end
 end)
 
--- 6. Notification Logic
 local function playNotifSoundAndText(rarity)
 	local sound = Instance.new("Sound")
 	sound.SoundId = "rbxassetid://8486683243"
@@ -784,21 +764,18 @@ CreateToggle("Auto Equip Best Block", function(toggled)
 end)
 
 CreateToggle("Long Range Brainrot Take", function(toggled)
-	-- [NEW FEATURE] Long Range Take for Brainrots
 	longRangeBrainrotEnabled = toggled
 	
 	local function applyLongRange(obj)
-		-- Check structure: RenderedBrainrot -> Root -> TakePrompt
 		local root = obj:FindFirstChild("Root")
 		if root then
 			local prompt = root:FindFirstChild("TakePrompt")
 			if prompt and prompt:IsA("ProximityPrompt") then
 				if longRangeBrainrotEnabled then
-					prompt.MaxActivationDistance = 100 -- Jarak Jauh
-					prompt.RequiresLineOfSight = false -- Tembus Tembok
-					prompt.HoldDuration = 0 -- Instant
+					prompt.MaxActivationDistance = 100 
+					prompt.RequiresLineOfSight = false 
+					prompt.HoldDuration = 0 
 				else
-					-- Reset to default if disabled (approximate)
 					prompt.MaxActivationDistance = 10 
 					prompt.RequiresLineOfSight = true
 				end
@@ -809,11 +786,9 @@ CreateToggle("Long Range Brainrot Take", function(toggled)
 	local function setupListener(category)
 		local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild(category)
 		if folder then
-			-- Apply to existing
 			for _, v in pairs(folder:GetChildren()) do
 				applyLongRange(v)
 			end
-			-- Listen for new
 			if not activeLongRangeConnections[category] then
 				activeLongRangeConnections[category] = folder.ChildAdded:Connect(applyLongRange)
 			end
@@ -848,9 +823,9 @@ local function CreateLuckyBlockDropdown()
 
 	local DropdownFrame = Instance.new("Frame")
 	DropdownFrame.Name = "DropdownFrame"
-	DropdownFrame.Size = UDim2.new(1, 0, 0, 0) -- Starts hidden
+	DropdownFrame.Size = UDim2.new(1, 0, 0, 0)
 	DropdownFrame.BackgroundTransparency = 1
-	DropdownFrame.ClipsDescendants = true -- Hide content when closed
+	DropdownFrame.ClipsDescendants = true 
 	DropdownFrame.Visible = false
 	DropdownFrame.Parent = Container
 
@@ -865,7 +840,7 @@ local function CreateLuckyBlockDropdown()
 		if expanded then
 			DropdownBtn.Text = "LUCKY BLOCK (SLIDE MODE) ▲"
 			DropdownFrame.Visible = true
-			DropdownFrame.Size = UDim2.new(1, 0, 0, 185) -- Height for 5 items (36*5 + padding)
+			DropdownFrame.Size = UDim2.new(1, 0, 0, 185)
 		else
 			DropdownBtn.Text = "LUCKY BLOCK (SLIDE MODE) ▼"
 			DropdownFrame.Size = UDim2.new(1, 0, 0, 0)
@@ -880,8 +855,8 @@ local function CreateLuckyBlockDropdown()
 		for _, v in pairs(slideSettings) do
 			if v then anyEnabled = true break end
 		end
-
-		if anyEnabled or autoClaimTicketEnabled or autoTestCommonEnabled then
+		-- Check other features that use slide
+		if anyEnabled or autoClaimTicketEnabled or autoTestCommonEnabled or autoCoinValentineEnabled then
 			toggleUndergroundPlatform(true)
 		else
 			toggleUndergroundPlatform(false)
@@ -897,12 +872,10 @@ end
 
 CreateLuckyBlockDropdown()
 
--- [IMPROVED] MASTER LOOP FOR SLIDE MODE (CHAIN LOGIC: Max 3)
 task.spawn(function()
 	while true do
-		task.wait(0.5) -- Scan interval
+		task.wait(0.5) 
 
-		-- Logic Guard: Jangan jalan kalau sedang sibuk (Lock)
 		if actionLock then continue end
 
 		local activeTypes = {}
@@ -919,7 +892,6 @@ task.spawn(function()
 				local collectedCount = 0
 				local maxCollect = 3
 				
-				-- 1. Helper function to find closest valid block
 				local function getClosestBlock()
 					local closest = nil
 					local minDist = 999999
@@ -943,19 +915,16 @@ task.spawn(function()
 					return closest
 				end
 				
-				-- 2. Chain Loop (Max 3)
 				while collectedCount < maxCollect do
 					local targetModel = getClosestBlock()
 					
 					if targetModel then
-						actionLock = true -- LOCK
+						actionLock = true 
 						local root = targetModel.RootPart
 						
-						-- Slide To Block
 						local targetPos = Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
 						slideToPosition(targetPos) 
 						
-						-- Take Block
 						local prompt = root:FindFirstChild("ProximityPrompt")
 						if prompt then
 							for i = 1, 10 do
@@ -968,19 +937,18 @@ task.spawn(function()
 						collectedCount = collectedCount + 1
 						task.wait(0.2)
 					else
-						break -- No more blocks found
+						break 
 					end
 				end
 				
-				-- 3. Return to Base if we collected anything
 				if collectedCount > 0 then
 					local base = workspace:FindFirstChild("SpawnLocation1")
 					if base then
 						local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
 						slideToPosition(basePos)
 					end
-					actionLock = false -- UNLOCK
-					task.wait(1) -- Cooldown di base
+					actionLock = false 
+					task.wait(1) 
 				else
 					actionLock = false
 				end
@@ -998,7 +966,6 @@ CreateButton("Reduce Lag+ (Delete Maps)", function()
 		"ArcadeWheel", "EventTimers", "LimitedShop", "UpgradeShop", "WaveMachine"
 	}
 	
-	-- Delete Workspace Targets
 	for _, name in pairs(targets) do
 		local obj = workspace:FindFirstChild(name)
 		if obj then 
@@ -1006,14 +973,12 @@ CreateButton("Reduce Lag+ (Delete Maps)", function()
 		end
 	end
 	
-	-- Clear Lighting
 	for _, v in pairs(Lighting:GetChildren()) do
 		if not v:IsA("Script") then
 			pcall(function() v:Destroy() end)
 		end
 	end
 	
-	-- Reset basic lighting settings for better FPS
 	Lighting.GlobalShadows = false
 	Lighting.FogEnd = 100000
 	Lighting.Brightness = 2
@@ -1142,18 +1107,14 @@ CreateToggle("Auto Tickets (Legacy)", function(toggled)
 	end
 end)
 
--- [NEW FIXED] Auto Claim Ticket (Underground) WITH SLIDE LOGIC
 CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	autoClaimTicketEnabled = toggled
-	
-	-- Jika dinyalakan, pastikan platform aktif
 	if toggled then 
 		toggleUndergroundPlatform(true) 
 	else
-		-- Cek apakah fitur lain (LuckyBlock) masih butuh platform
 		local anyLuckyBlockOn = false
 		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
-		if not anyLuckyBlockOn and not autoTestCommonEnabled then
+		if not anyLuckyBlockOn and not autoTestCommonEnabled and not autoCoinValentineEnabled then
 			toggleUndergroundPlatform(false)
 		end
 	end
@@ -1161,9 +1122,8 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	if autoClaimTicketEnabled then
 		task.spawn(function()
 			while autoClaimTicketEnabled do
-				task.wait(0.2) -- Interval cek
+				task.wait(0.2) 
 				
-				-- Logic Guard: Lock system agar tidak tabrakan dengan Lucky Block
 				if actionLock then continue end
 				
 				local folder = workspace:FindFirstChild("ArcadeEventTickets")
@@ -1174,15 +1134,13 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 					
 					for _, model in pairs(folder:GetChildren()) do
 						if model.Name == "Ticket" and model:FindFirstChild("Ticket") then
-							actionLock = true -- LOCK
+							actionLock = true
 							foundTicket = true
 							
 							local part = model.Ticket
-							-- 1. Slide to Ticket (Underground Mode handled by slideToPosition)
 							local targetPos = part.Position
 							slideToPosition(targetPos)
 							
-							-- 2. Ambil Tiket (TouchInterest)
 							if part:FindFirstChild("TouchInterest") then
 								if firetouchinterest then
 									firetouchinterest(hrp, part, 0)
@@ -1193,19 +1151,18 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 							end
 							
 							task.wait(0.2)
-							break -- Ambil satu dulu baru return base (biar aman)
+							break 
 						end
 					end
 					
-					-- 3. Return to Base (Safety)
 					if foundTicket then
 						local base = workspace:FindFirstChild("SpawnLocation1")
 						if base then
 							local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
 							slideToPosition(basePos)
 						end
-						actionLock = false -- UNLOCK
-						task.wait(1) -- Cooldown
+						actionLock = false 
+						task.wait(1) 
 					end
 				end
 			end
@@ -1213,7 +1170,6 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	end
 end)
 
--- [NEW] TEST FEATURE: Common Brainrot Underground + Return Base (Slide Mode)
 CreateToggle("TEST Underground (Common + Return)", function(toggled)
 	autoTestCommonEnabled = toggled
 	if toggled then toggleUndergroundPlatform(true) 
@@ -1233,11 +1189,9 @@ CreateToggle("TEST Underground (Common + Return)", function(toggled)
 						local root = model:FindFirstChild("Root")
 						if root then
 							actionLock = true
-							-- 1. Slide to Brainrot
 							local targetPos = Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
 							slideToPosition(targetPos)
 							
-							-- 2. Ambil
 							local prompt = root:FindFirstChild("TakePrompt")
 							if prompt then
 								fireproximityprompt(prompt)
@@ -1245,7 +1199,6 @@ CreateToggle("TEST Underground (Common + Return)", function(toggled)
 							
 							task.wait(0.5) 
 							
-							-- 3. Return to Base (Slide)
 							local base = workspace:FindFirstChild("SpawnLocation1")
 							if base then
 								local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
@@ -1269,59 +1222,110 @@ end)
 
 CreateSection("VALENTINE EVENT")
 
-CreateToggle("Auto Collect Valentine", function(toggled)
-	autoValentineEnabled = toggled
-	if autoValentineEnabled then
-		task.spawn(function()
-			while autoValentineEnabled do
-				task.wait(0.2)
-				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-				
-				if hrp then
-					local function collectPart(part)
-						if not part then return end
-						if firetouchinterest then
-							firetouchinterest(hrp, part, 0)
-							firetouchinterest(hrp, part, 1)
-						else
-							part.CFrame = hrp.CFrame
-						end
-					end
+-- [NEW LOGIC] Auto Coin Valentine (Underground + Magnet)
+CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
+	autoCoinValentineEnabled = toggled
+	
+	-- Manage Platform State
+	if toggled then 
+		toggleUndergroundPlatform(true) 
+	else
+		-- Check other features to prevent platform loss
+		local anyLuckyBlockOn = false
+		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
+		if not anyLuckyBlockOn and not autoClaimTicketEnabled and not autoTestCommonEnabled then
+			toggleUndergroundPlatform(false)
+		end
+	end
 
-					local candyFolder = workspace:FindFirstChild("CandyEventParts")
-					if candyFolder then
-						for _, item in pairs(candyFolder:GetChildren()) do
-							if string.match(item.Name, "Candy%d") then 
-								local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
-								collectPart(part)
-							end
-						end
-					end
-
-					local coinFolder = workspace:FindFirstChild("ValentinesCoinParts")
-					if coinFolder then
-						for _, item in pairs(coinFolder:GetChildren()) do
-							if string.find(item.Name, "ValentinesCoin") then
-								local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
-								collectPart(part)
+	-- 1. MAGNET LOOP (Parallel)
+	-- collects coins within 280 studs while moving
+	task.spawn(function()
+		while autoCoinValentineEnabled do
+			task.wait(0.1) -- Fast loop
+			local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+			local coinFolder = workspace:FindFirstChild("ValentinesCoinParts")
+			
+			if hrp and coinFolder then
+				for _, item in pairs(coinFolder:GetChildren()) do
+					-- Check distance (280 Studs Magnet)
+					local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
+					if part then
+						local dist = (part.Position - hrp.Position).Magnitude
+						if dist <= 280 then
+							if firetouchinterest then
+								firetouchinterest(hrp, part, 0)
+								firetouchinterest(hrp, part, 1)
+							else
+								-- Fallback (should not happen if executed properly)
+								part.CFrame = hrp.CFrame
 							end
 						end
 					end
 				end
 			end
-		end)
-	end
+		end
+	end)
+
+	-- 2. MOVEMENT LOOP (Slide -> Wait -> Return)
+	task.spawn(function()
+		while autoCoinValentineEnabled do
+			task.wait(0.2)
+			
+			-- Wait for ActionLock (Combo with Lucky Block)
+			if actionLock then continue end
+
+			-- Dynamic Search for Celestial Part
+			local targetPart = nil
+			for _, folder in pairs(workspace:GetChildren()) do
+				if string.find(folder.Name, "_SharedInstances") then -- Matches "Default_SharedInstances", "Money_...", etc.
+					local floors = folder:FindFirstChild("Floors")
+					if floors then
+						targetPart = floors:FindFirstChild("Celestial")
+						if targetPart then break end
+					end
+				end
+			end
+
+			local base = workspace:FindFirstChild("SpawnLocation1")
+
+			if targetPart and base and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+				
+				-- Step A: Lock Action
+				actionLock = true 
+
+				-- Step B: Slide to Celestial
+				local targetPos = Vector3.new(targetPart.Position.X, targetPart.Position.Y - 10, targetPart.Position.Z)
+				slideToPosition(targetPos)
+
+				-- Step C: Wait 5 Seconds (Collecting happens in Magnet Loop)
+				task.wait(5)
+
+				-- Step D: Slide Back to Base
+				local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+				slideToPosition(basePos)
+
+				-- Step E: Unlock Action
+				actionLock = false
+
+				-- Step F: Wait 10 Seconds at Base
+				task.wait(10)
+				
+			else
+				-- If structure not found, wait and retry
+				task.wait(2)
+			end
+		end
+	end)
 end)
 
 CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 	autoDepositEnabled = toggled
 	
-	-- Helper Function for Deposit
 	local function performDeposit()
 		if isDepositing then return end
-		isDepositing = true -- Flag ON to pause Follow Player
+		isDepositing = true 
 		
-		-- Path: ValentinesMap -> CandyGramStation -> Main -> Prompts -> ProximityPrompt
 		local map = workspace:FindFirstChild("ValentinesMap")
 		if map then
 			local station = map:FindFirstChild("CandyGramStation")
@@ -1330,30 +1334,25 @@ CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 				if main then
 					if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 						local hrp = lp.Character.HumanoidRootPart
-						local oldPos = hrp.CFrame -- Save Old Position
+						local oldPos = hrp.CFrame 
 						
-						-- 1. Teleport to Station (Slightly above Main)
 						hrp.CFrame = main.CFrame * CFrame.new(0, 4, 0)
-						hrp.Anchored = true -- Anchor to ensure interactions
+						hrp.Anchored = true 
 						
-						-- Wait for physics to sync/settle
 						task.wait(0.5) 
 						
-						local prompts = main:FindFirstChild("Prompts") -- Correct Path
+						local prompts = main:FindFirstChild("Prompts")
 						if prompts then
 							local prompt = prompts:FindFirstChild("ProximityPrompt")
 							if prompt then
-								-- 2. Force Instant & Activate
 								prompt.MaxActivationDistance = 9999
 								prompt.HoldDuration = 0
 								prompt.RequiresLineOfSight = false
 								
-								-- Spam firing to ensure register (10x Loop)
 								for i = 1, 10 do
 									if fireproximityprompt then
 										fireproximityprompt(prompt)
 									end
-									-- Native fallback
 									prompt:InputHoldBegin()
 									task.wait()
 									prompt:InputHoldEnd()
@@ -1362,31 +1361,26 @@ CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 							end
 						end
 						
-						-- [IMPORTANT] Wait AFTER interaction before returning (biar server proses deposit)
 						task.wait(1.5) 
 						
-						-- 3. Return to Old Position
 						if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-							lp.Character.HumanoidRootPart.Anchored = false -- Unanchor
+							lp.Character.HumanoidRootPart.Anchored = false 
 							lp.Character.HumanoidRootPart.CFrame = oldPos
 						end
 					end
 				end
 			end
 		end
-		isDepositing = false -- Flag OFF
+		isDepositing = false 
 	end
 
-	-- Listener Loop
 	if autoDepositEnabled then
 		task.spawn(function()
 			while autoDepositEnabled do
 				local triggerFound = false
 				
-				-- Check for Text Notification
 				local pGui = lp:FindFirstChild("PlayerGui")
 				if pGui then
-					-- Scan descendants for the specific text
 					for _, v in pairs(pGui:GetDescendants()) do
 						if v:IsA("TextLabel") and v.Visible then
 							if string.find(v.Text, "submit your current candies") then
@@ -1399,10 +1393,10 @@ CreateToggle("Auto Deposit (Smart Text)", function(toggled)
 				
 				if triggerFound then
 					performDeposit()
-					task.wait(2) -- Cooldown after deposit to prevent spam loop
+					task.wait(2) 
 				end
 				
-				task.wait(0.5) -- Check UI every 0.5s
+				task.wait(0.5) 
 			end
 		end)
 	end
@@ -1410,13 +1404,11 @@ end)
 
 CreateSection("MISC")
 
--- [NEW FEATURE] ANTI AFK TOGGLE
 CreateToggle("Anti AFK (20m Bypass)", function(toggled)
 	if toggled then
-		-- Connect to the idle signal
 		antiAfkConnection = lp.Idled:Connect(function()
 			VirtualUser:CaptureController()
-			VirtualUser:ClickButton2(Vector2.new()) -- Simulates a right click to reset timer
+			VirtualUser:ClickButton2(Vector2.new())
 		end)
 		
 		StarterGui:SetCore("SendNotification", {
@@ -1425,7 +1417,6 @@ CreateToggle("Anti AFK (20m Bypass)", function(toggled)
 			Duration = 3
 		})
 	else
-		-- Disconnect and clean up
 		if antiAfkConnection then
 			antiAfkConnection:Disconnect()
 			antiAfkConnection = nil
@@ -1444,28 +1435,23 @@ CreateToggle("Fast Interact (Global)", function(toggled)
 	
 	local function makeInstant(prompt)
 		prompt.HoldDuration = 0
-		-- Add listener to detect reset (Anti-Reset Logic)
 		if not activeInteractConnections[prompt] then
 			activeInteractConnections[prompt] = prompt:GetPropertyChangedSignal("HoldDuration"):Connect(function()
 				if fastInteractEnabled and prompt.HoldDuration > 0 then
-					prompt.HoldDuration = 0 -- Re-apply instantly if game changes it
+					prompt.HoldDuration = 0 
 				end
 			end)
 		end
 	end
 
 	if fastInteractEnabled then
-		-- 1. Apply to existing
 		for _, v in pairs(workspace:GetDescendants()) do
 			if v:IsA("ProximityPrompt") then
 				makeInstant(v)
 			end
 		end
-		
-		-- 2. Listen for new prompts
 		ftConnection = ProximityPromptService.PromptAdded:Connect(makeInstant)
 	else
-		-- Cleanup
 		if ftConnection then ftConnection:Disconnect() ftConnection = nil end
 		for _, conn in pairs(activeInteractConnections) do
 			conn:Disconnect()
@@ -1476,11 +1462,10 @@ end)
 
 CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	if toggled then
-		lp.CameraMaxZoomDistance = 100000 -- Unlimited Zoom Distance
-		-- Mode Invisicam membuat part menjadi transparan jika menghalangi kamera (efek tembus pandang)
+		lp.CameraMaxZoomDistance = 100000 
 		lp.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam 
 	else
-		lp.CameraMaxZoomDistance = 128 -- Default Roblox
+		lp.CameraMaxZoomDistance = 128 
 		lp.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Zoom
 	end
 end)
@@ -1490,4 +1475,4 @@ CreateButton("Delete Safe Walls", function()
 	if walls then for _, v in pairs(walls:GetChildren()) do v:Destroy() end end
 end)
 
-print("✅ Dj Hub Remastered (Fixed Ticket Logic + Improved Lucky Block Chain) Loaded")
+print("✅ Dj Hub Remastered (Valentine Underground + Magnet Updated) Loaded")
