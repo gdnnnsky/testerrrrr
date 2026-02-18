@@ -1030,7 +1030,7 @@ CreateButton("Reduce Lag+ (Delete Maps)", function()
 		"ActiveBrainrots", "ActiveTsunamis", "Bases",
 		"Leaderboards", "Misc", "SellPoint", "SpawnMachines",
 		"ArcadeWheel", "EventTimers", "LimitedShop", "UpgradeShop", "WaveMachine",
-		"Debris", "EventParts", "SectionHitbox"
+		"Debris"
 	}
 	for _, name in pairs(simpleTargets) do
 		local obj = workspace:FindFirstChild(name)
