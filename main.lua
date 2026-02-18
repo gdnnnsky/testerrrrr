@@ -1,10 +1,5 @@
---// Dj Hub (Ultimate Version - Source Cleaning Fix)
---// Update Log: 
---// 1. "Reduce Lag+" now cleans ReplicatedStorage -> Assets -> MapVariants.
---// 2. Ensures future maps load without lag (One-time activation).
---// 3. Strict Rules: Keep 'Ground' (Maps) & 'Celestial' (SharedInstances).
---// 4. Added "Server Hop" (Smart Search - Not Full).
---// 5. GUI Auto-Scale Fix for Cloud Gaming/Small Screens.
+--// Dj Hub (Ultimate Version - Cleaned Custom Build)
+--// Removed: Long Range, Notifs, Specific ESPs, Legacy Ticket, Test Underground, Auto Deposit, Server Hop.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -336,19 +331,15 @@ local noclipOn = false
 local noclipConn = nil
 local ESP = { enabled = {}, connections = {}, markers = {} }
 local fastInteractEnabled = false 
-local longRangeBrainrotEnabled = false
 local ftConnection = nil
 local activeInteractConnections = {} 
-local activeLongRangeConnections = {}
 local autoConsoleEnabled = false
-local autoTicketEnabled = false
 
 -- [NEW] GLOBAL LOCK to prevent Slide features from clashing
 local actionLock = false
 
 -- [NEW] Underground Mode Variables
 local autoClaimTicketEnabled = false 
-local autoTestCommonEnabled = false
 local autoCoinValentineEnabled = false 
 
 -- [NEW] Lucky Block Variables
@@ -363,11 +354,6 @@ local slideSettings = {
 local undergroundPlatform = nil
 local undergroundConnection = nil
 local undergroundFixedY = nil 
-
-local autoDepositEnabled = false
-local isDepositing = false 
-local notifConfig = { Divine = false, Celestial = false, Common = false }
-local notifListeners = {}
 
 local followTarget = nil
 local followConnection = nil
@@ -553,41 +539,6 @@ local function addMarker(obj, label)
 	}
 end
 
-local function addItemMarker(obj, type)
-	if ESP.markers[obj] then return end
-	local root = obj:FindFirstChildWhichIsA("BasePart")
-	if not root then return end
-	
-	local color = (type == "Ticket") and Color3.fromRGB(0, 255, 255) or Color3.fromRGB(170, 0, 255)
-	local labelText = (type == "Ticket") and "🎟 Ticket" or "🎮 Console"
-	
-	local hl = Instance.new("Highlight", obj)
-	hl.FillColor = color
-	hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-	hl.FillTransparency = 0.5
-	
-	local bb = Instance.new("BillboardGui", obj)
-	bb.Adornee = root
-	bb.Size = UDim2.new(0, 200, 0, 50)
-	bb.AlwaysOnTop = true
-	bb.StudsOffset = Vector3.new(0, 2, 0)
-	
-	local txt = Instance.new("TextLabel", bb)
-	txt.Size = UDim2.new(1,0,1,0)
-	txt.BackgroundTransparency = 1
-	txt.TextStrokeTransparency = 0
-	txt.TextColor3 = color
-	txt.Font = Enum.Font.GothamBold
-	txt.TextSize = 13
-	txt.Text = labelText
-	
-	ESP.markers[obj] = {
-		hl = hl,
-		bb = bb,
-		ac = obj.AncestryChanged:Connect(function() if not obj.Parent then removeMarker(obj) end end)
-	}
-end
-
 local function toggleEspLogic(mode, folderName)
 	ESP.enabled[mode] = not ESP.enabled[mode]
 	local isOn = ESP.enabled[mode]
@@ -599,21 +550,6 @@ local function toggleEspLogic(mode, folderName)
 		ESP.connections[mode] = folder.ChildAdded:Connect(function(c) addMarker(c, mode) end)
 	else
 		for obj, _ in pairs(ESP.markers) do if obj:IsDescendantOf(folder) then removeMarker(obj) end end
-	end
-end
-
-local function toggleItemEsp(mode, folderName)
-	ESP.enabled[mode] = not ESP.enabled[mode]
-	local isOn = ESP.enabled[mode]
-	if ESP.connections[mode] then ESP.connections[mode]:Disconnect() end
-	local folder = workspace:FindFirstChild(folderName)
-	if isOn and folder then
-		for _, v in pairs(folder:GetChildren()) do addItemMarker(v, mode) end
-		ESP.connections[mode] = folder.ChildAdded:Connect(function(c) addItemMarker(c, mode) end)
-	else
-		for obj, _ in pairs(ESP.markers) do 
-			if obj:IsDescendantOf(folder) then removeMarker(obj) end 
-		end
 	end
 end
 
@@ -636,7 +572,7 @@ local function StartFollowing(targetPlayer)
 	if TargetLabel then TargetLabel.Text = "Following: " .. targetPlayer.Name end
 	
 	followConnection = RunService.RenderStepped:Connect(function()
-		if isDepositing or actionLock then return end
+		if actionLock then return end
 
 		if followTarget and followTarget.Character and followTarget.Character:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 			local tRoot = followTarget.Character.HumanoidRootPart
@@ -688,40 +624,6 @@ task.spawn(function()
 			end
 		end
 	end
-end)
-
-local function playNotifSoundAndText(rarity)
-	local sound = Instance.new("Sound")
-	sound.SoundId = "rbxassetid://8486683243"
-	sound.Volume = 7
-	sound.Parent = SoundService
-	sound:Play()
-	game:GetService("Debris"):AddItem(sound, 3)
-	
-	StarterGui:SetCore("SendNotification", {
-		Title = rarity .. " BRAINROT!",
-		Text = "TEXT (" .. rarity .. " BRAINROT MUNCUL!)",
-		Duration = 7
-	})
-end
-
-local function setupNotifListener(category)
-	if notifListeners[category] then return end
-	local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
-	if not activeFolder then return end
-	local targetFolder = activeFolder:FindFirstChild(category)
-	if targetFolder then
-		notifListeners[category] = targetFolder.ChildAdded:Connect(function(child)
-			if notifConfig[category] then playNotifSoundAndText(category:upper()) end
-		end)
-	end
-end
-
-task.spawn(function()
-	if not workspace:FindFirstChild("ActiveBrainrots") then workspace.ChildAdded:Wait() end
-	setupNotifListener("Divine")
-	setupNotifListener("Celestial")
-	setupNotifListener("Common")
 end)
 
 --=============================================================================
@@ -795,48 +697,6 @@ CreateToggle("Auto Equip Best Block", function(toggled)
 	autoEquipEnabled = toggled
 end)
 
-CreateToggle("Long Range Brainrot Take", function(toggled)
-	longRangeBrainrotEnabled = toggled
-	
-	local function applyLongRange(obj)
-		local root = obj:FindFirstChild("Root")
-		if root then
-			local prompt = root:FindFirstChild("TakePrompt")
-			if prompt and prompt:IsA("ProximityPrompt") then
-				if longRangeBrainrotEnabled then
-					prompt.MaxActivationDistance = 100 
-					prompt.RequiresLineOfSight = false 
-					prompt.HoldDuration = 0 
-				else
-					prompt.MaxActivationDistance = 10 
-					prompt.RequiresLineOfSight = true
-				end
-			end
-		end
-	end
-
-	local function setupListener(category)
-		local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild(category)
-		if folder then
-			for _, v in pairs(folder:GetChildren()) do
-				applyLongRange(v)
-			end
-			if not activeLongRangeConnections[category] then
-				activeLongRangeConnections[category] = folder.ChildAdded:Connect(applyLongRange)
-			end
-		end
-	end
-
-	if longRangeBrainrotEnabled then
-		setupListener("Common")
-		setupListener("Divine")
-		setupListener("Celestial")
-	else
-		for _, conn in pairs(activeLongRangeConnections) do conn:Disconnect() end
-		activeLongRangeConnections = {}
-	end
-end)
-
 --=============================================================================
 --// LUCKY BLOCK SECTION (DROPDOWN + SLIDE MODE IMPROVED)
 --=============================================================================
@@ -888,7 +748,7 @@ local function CreateLuckyBlockDropdown()
 			if v then anyEnabled = true break end
 		end
 		-- Check other features that use slide
-		if anyEnabled or autoClaimTicketEnabled or autoTestCommonEnabled or autoCoinValentineEnabled then
+		if anyEnabled or autoClaimTicketEnabled or autoCoinValentineEnabled then
 			toggleUndergroundPlatform(true)
 		else
 			toggleUndergroundPlatform(false)
@@ -1125,22 +985,11 @@ CreateButton("Refresh Player List", function()
 	end
 end)
 
-CreateSection("NOTIFICATIONS")
-
-CreateToggle("Notif DEVINE", function(t) notifConfig["Divine"] = t end)
-CreateToggle("Notif CELESTIAL", function(t) notifConfig["Celestial"] = t end)
-CreateToggle("Notif COMMON", function(t) notifConfig["Common"] = t end)
-
 CreateSection("VISUALS (ESP)")
 
 CreateToggle("ESP Divine", function() toggleEspLogic("Divine", "Divine") end)
-CreateToggle("ESP Celestial", function() toggleEspLogic("Celestial", "Celestial") end)
-CreateToggle("ESP Common", function() toggleEspLogic("Common", "Common") end)
 
 CreateSection("ARCADE EVENT")
-
-CreateToggle("ESP Game Console", function() toggleItemEsp("Console", "ArcadeEventConsoles") end)
-CreateToggle("ESP Ticket", function() toggleItemEsp("Ticket", "ArcadeEventTickets") end)
 
 CreateToggle("Auto Game Console", function(toggled)
 	autoConsoleEnabled = toggled
@@ -1170,34 +1019,6 @@ CreateToggle("Auto Game Console", function(toggled)
 	end
 end)
 
-CreateToggle("Auto Tickets (Legacy)", function(toggled)
-	autoTicketEnabled = toggled
-	if autoTicketEnabled then
-		task.spawn(function()
-			while autoTicketEnabled do
-				task.wait(0.2)
-				local folder = workspace:FindFirstChild("ArcadeEventTickets")
-				if folder and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-					local hrp = lp.Character.HumanoidRootPart
-					for _, model in pairs(folder:GetChildren()) do
-						if model.Name == "Ticket" then
-							local part = model:FindFirstChild("Ticket")
-							if part and part:FindFirstChild("TouchInterest") then
-								if firetouchinterest then
-									firetouchinterest(hrp, part, 0)
-									firetouchinterest(hrp, part, 1)
-								else
-									part.CFrame = hrp.CFrame
-								end
-							end
-						end
-					end
-				end
-			end
-		end)
-	end
-end)
-
 CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	autoClaimTicketEnabled = toggled
 	if toggled then 
@@ -1205,7 +1026,7 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	else
 		local anyLuckyBlockOn = false
 		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
-		if not anyLuckyBlockOn and not autoTestCommonEnabled and not autoCoinValentineEnabled then
+		if not anyLuckyBlockOn and not autoCoinValentineEnabled then
 			toggleUndergroundPlatform(false)
 		end
 	end
@@ -1261,52 +1082,6 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	end
 end)
 
-CreateToggle("TEST Underground (Common + Return)", function(toggled)
-	autoTestCommonEnabled = toggled
-	if toggled then toggleUndergroundPlatform(true) 
-	else toggleUndergroundPlatform(false) end
-	
-	if autoTestCommonEnabled then
-		task.spawn(function()
-			while autoTestCommonEnabled do
-				task.wait(0.1)
-				if actionLock then continue end
-				
-				local folder = workspace:FindFirstChild("ActiveBrainrots") and workspace.ActiveBrainrots:FindFirstChild("Common")
-				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-				
-				if folder and hrp then
-					for _, model in pairs(folder:GetChildren()) do
-						local root = model:FindFirstChild("Root")
-						if root then
-							actionLock = true
-							local targetPos = Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
-							slideToPosition(targetPos)
-							
-							local prompt = root:FindFirstChild("TakePrompt")
-							if prompt then
-								fireproximityprompt(prompt)
-							end
-							
-							task.wait(0.5) 
-							
-							local base = workspace:FindFirstChild("SpawnLocation1")
-							if base then
-								local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
-								slideToPosition(basePos)
-							end
-							
-							actionLock = false
-							task.wait(1)
-							break 
-						end
-					end
-				end
-			end
-		end)
-	end
-end)
-
 --=============================================================================
 --// VALENTINE EVENT
 --=============================================================================
@@ -1325,7 +1100,7 @@ CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 		-- Check other features to prevent platform loss
 		local anyLuckyBlockOn = false
 		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
-		if not anyLuckyBlockOn and not autoClaimTicketEnabled and not autoTestCommonEnabled then
+		if not anyLuckyBlockOn and not autoClaimTicketEnabled then
 			toggleUndergroundPlatform(false)
 		end
 	end
@@ -1429,89 +1204,6 @@ CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 	end)
 end)
 
-CreateToggle("Auto Deposit (Smart Text)", function(toggled)
-	autoDepositEnabled = toggled
-	
-	local function performDeposit()
-		if isDepositing then return end
-		isDepositing = true 
-		
-		local map = workspace:FindFirstChild("ValentinesMap")
-		if map then
-			local station = map:FindFirstChild("CandyGramStation")
-			if station then
-				local main = station:FindFirstChild("Main")
-				if main then
-					if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-						local hrp = lp.Character.HumanoidRootPart
-						local oldPos = hrp.CFrame 
-						
-						hrp.CFrame = main.CFrame * CFrame.new(0, 4, 0)
-						hrp.Anchored = true 
-						
-						task.wait(0.5) 
-						
-						local prompts = main:FindFirstChild("Prompts")
-						if prompts then
-							local prompt = prompts:FindFirstChild("ProximityPrompt")
-							if prompt then
-								prompt.MaxActivationDistance = 9999
-								prompt.HoldDuration = 0
-								prompt.RequiresLineOfSight = false
-								
-								for i = 1, 10 do
-									if fireproximityprompt then
-										fireproximityprompt(prompt)
-									end
-									prompt:InputHoldBegin()
-									task.wait()
-									prompt:InputHoldEnd()
-									task.wait(0.1)
-								end
-							end
-						end
-						
-						task.wait(1.5) 
-						
-						if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-							lp.Character.HumanoidRootPart.Anchored = false 
-							lp.Character.HumanoidRootPart.CFrame = oldPos
-						end
-					end
-				end
-			end
-		end
-		isDepositing = false 
-	end
-
-	if autoDepositEnabled then
-		task.spawn(function()
-			while autoDepositEnabled do
-				local triggerFound = false
-				
-				local pGui = lp:FindFirstChild("PlayerGui")
-				if pGui then
-					for _, v in pairs(pGui:GetDescendants()) do
-						if v:IsA("TextLabel") and v.Visible then
-							if string.find(v.Text, "submit your current candies") then
-								triggerFound = true
-								break
-							end
-						end
-					end
-				end
-				
-				if triggerFound then
-					performDeposit()
-					task.wait(2) 
-				end
-				
-				task.wait(0.5) 
-			end
-		end)
-	end
-end)
-
 CreateSection("MISC")
 
 CreateButton("Delete Safe Walls", function()
@@ -1520,51 +1212,10 @@ CreateButton("Delete Safe Walls", function()
 end)
 
 --=============================================================================
---// SERVER FEATURES (FIXED LOGIC)
+--// SERVER FEATURES
 --=============================================================================
 
 CreateSection("SERVER")
-
-CreateButton("Cari Server Lain (Hop)", function()
-	-- [FIX HOP] Logic baru: Loop server, cari yang tidak penuh (playing < max)
-	StarterGui:SetCore("SendNotification", {
-		Title = "Server Hop",
-		Text = "Mencari server kosong (Scanning)...",
-		Duration = 2
-	})
-	
-	local function Hop()
-		-- Ambil 100 server
-		local req = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Desc&limit=100")
-		local body = HttpService:JSONDecode(req)
-		
-		if body and body.data then
-			for _, v in ipairs(body.data) do
-				-- Cek jika server valid, bukan jobid sendiri, DAN belum penuh (slot sisa minimal 1)
-				if type(v) == "table" and v.playing and v.maxPlayers and v.playing < (v.maxPlayers - 1) and v.id ~= game.JobId then
-					
-					StarterGui:SetCore("SendNotification", {
-						Title = "Server Found!",
-						Text = "Join: " .. v.playing .. "/" .. v.maxPlayers,
-						Duration = 2
-					})
-					
-					TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id, lp)
-					return -- Berhenti loop jika ketemu
-				end
-			end
-			
-			-- Jika loop selesai tapi tidak ketemu server kosong
-			StarterGui:SetCore("SendNotification", {
-				Title = "Hop Gagal",
-				Text = "Semua server di list penuh, coba lagi!",
-				Duration = 3
-			})
-		end
-	end
-	
-	pcall(Hop)
-end)
 
 CreateToggle("Anti AFK (20m Bypass)", function(toggled)
 	if toggled then
@@ -1632,4 +1283,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (GUI & Hop Fix) Loaded")
+print("✅ Dj Hub Remastered (Lite Version) Loaded")
