@@ -1,5 +1,5 @@
 --// Dj Hub (Ultimate Version - Cleaned Custom Build)
---// Removed: Long Range, Notifs, Specific ESPs, Legacy Ticket, Test Underground, Auto Deposit, Server Hop.
+--// Removed:ssssssssss Long Range, Notifs, Specific ESPs, Legacy Ticket, Test Underground, Auto Deposit, Server Hop.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -877,7 +877,7 @@ CreateButton("Reduce Lag+ (Delete Maps)", function()
 	-- Function: Cleaning Logic for Map Models
 	local function cleanMapModel(mapModel)
 		for _, child in pairs(mapModel:GetChildren()) do
-			if child.Name ~= "Ground" then
+			if child.Name ~= "Spawn" then
 				pcall(function() child:Destroy() end)
 			end
 		end
@@ -902,7 +902,7 @@ CreateButton("Reduce Lag+ (Delete Maps)", function()
 	
 	-- Current Map in Workspace
 	for _, obj in pairs(workspace:GetChildren()) do
-		if string.match(obj.Name, "Map") and obj:FindFirstChild("Ground") then
+		if string.match(obj.Name, "Map") and obj:FindFirstChild("Spawners") then
 			cleanMapModel(obj)
 		end
 	end
