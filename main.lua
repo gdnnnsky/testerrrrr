@@ -1,5 +1,5 @@
 --// Dj Hub (Ultimate Version - Cleaned Custom Build)
---// Removed:ssssssssss Long Range, Notifs, Specific ESPs, Legacy Ticket, Test Underground, Auto Deposit, Server Hop.
+--// Updated: Auto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -359,6 +359,7 @@ local followTarget = nil
 local followConnection = nil
 local autoEquipEnabled = false
 local antiAfkConnection = nil
+local autoReduceLagEnabled = false
 
 --=============================================================================
 --// LOGIC FUNCTIONS
@@ -851,94 +852,66 @@ end)
 
 CreateSection("OPTIMIZATION")
 
-CreateButton("Reduce Lag+ (Delete Maps)", function()
+CreateToggle("Auto Reduce Lag+ (10m Loop)", function(toggled)
+	autoReduceLagEnabled = toggled
 	
-	-- Function: Cleaning Logic for SharedInstances
-	local function cleanSharedInstances(container)
-		for _, folder in pairs(container:GetChildren()) do
-			if string.find(folder.Name, "_SharedInstances") then
-				for _, child in pairs(folder:GetChildren()) do
-					if child.Name == "Floors" then
-						-- Inside Floors: Keep Celestial only
-						for _, floorPart in pairs(child:GetChildren()) do
-							if floorPart.Name ~= "Celestial" then
-								pcall(function() floorPart:Destroy() end)
-							end
-						end
-					else
-						-- Delete AllowedSpaces, Gaps, VIPWalls, WaveSpawn, etc.
-						pcall(function() child:Destroy() end)
+	if autoReduceLagEnabled then
+		task.spawn(function()
+			while autoReduceLagEnabled do
+				
+				-- 1. Hapus Target Spesifik di Workspace
+				local targetNames = {
+					"ActiveBrainrots", "ActiveTsunamis", "BaseLocations", 
+					"Bases", "Debris", "Leaderboards", "GeyserVisualVFX", 
+					"Misc", "SellPoint", "SpawnMachines"
+				}
+				
+				for _, name in pairs(targetNames) do
+					local obj = workspace:FindFirstChild(name)
+					if obj then
+						pcall(function() obj:Destroy() end)
 					end
 				end
+				
+				-- 2. Deteksi & Hapus Folder Dinamis yang mengandung _SharedInstances
+				for _, obj in pairs(workspace:GetChildren()) do
+					if string.find(obj.Name, "_SharedInstances") then
+						pcall(function() obj:Destroy() end)
+					end
+				end
+				
+				-- 3. Hapus Semua Isi di Lighting
+				for _, v in pairs(Lighting:GetChildren()) do
+					pcall(function() v:Destroy() end)
+				end
+				
+				-- Optimasi Properti Lighting Bawaan
+				Lighting.GlobalShadows = false
+				Lighting.FogEnd = 100000
+				Lighting.Brightness = 2
+				
+				-- Kirim Notifikasi Sukses
+				StarterGui:SetCore("SendNotification", {
+					Title = "LAG REDUCED +",
+					Text = "Workspace & Lighting dibersihkan (Loop 10 Menit berjalan).",
+					Duration = 3
+				})
+				
+				-- 4. Timer 10 Menit (600 Detik) dengan Pengecekan Keaktifan
+				local timer = 0
+				while autoReduceLagEnabled and timer < 600 do
+					task.wait(1)
+					timer = timer + 1
+				end
 			end
-		end
+		end)
+	else
+		StarterGui:SetCore("SendNotification", {
+			Title = "Reduce Lag+",
+			Text = "Auto Reduce Lag dihentikan.",
+			Duration = 3
+		})
 	end
-
-	-- Function: Cleaning Logic for Map Models
-	local function cleanMapModel(mapModel)
-		for _, child in pairs(mapModel:GetChildren()) do
-			if child.Name ~= "Spawn" then
-				pcall(function() child:Destroy() end)
-			end
-		end
-	end
-
-	-- 1. CLEAN WORKSPACE (Immediate Relief)
-	
-	-- Global Junk
-	local simpleTargets = {
-		"ActiveBrainrots", "ActiveTsunamis", "Bases",
-		"Leaderboards", "Misc", "SellPoint", "SpawnMachines",
-		"ArcadeWheel", "EventTimers", "LimitedShop", "UpgradeShop", "WaveMachine",
-		"Debris"
-	}
-	for _, name in pairs(simpleTargets) do
-		local obj = workspace:FindFirstChild(name)
-		if obj then pcall(function() obj:Destroy() end) end
-	end
-	
-	-- SharedInstances in Workspace
-	cleanSharedInstances(workspace)
-	
-	-- Current Map in Workspace
-	for _, obj in pairs(workspace:GetChildren()) do
-		if string.match(obj.Name, "Map") and obj:FindFirstChild("Spawners") then
-			cleanMapModel(obj)
-		end
-	end
-
-	-- 2. CLEAN REPLICATED STORAGE (Prevent Future Lag)
-	-- Path: ReplicatedStorage -> Assets -> MapVariants
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	if assets then
-		local variants = assets:FindFirstChild("MapVariants")
-		if variants then
-			-- Iterate all map variants (ArcadeMap, ValentinesMap, etc.)
-			for _, mapVariant in pairs(variants:GetChildren()) do
-				cleanMapModel(mapVariant)
-			end
-		end
-		
-		-- Check for SharedInstances in Assets (if any)
-		cleanSharedInstances(assets)
-	end
-	
-	-- 3. Clean Lighting
-	for _, v in pairs(Lighting:GetChildren()) do
-		if not v:IsA("Script") then
-			pcall(function() v:Destroy() end)
-		end
-	end
-	
-	Lighting.GlobalShadows = false
-	Lighting.FogEnd = 100000
-	Lighting.Brightness = 2
-	
-	StarterGui:SetCore("SendNotification", {
-		Title = "LAG REDUCED +",
-		Text = "Maps cleaned from Source (RS) & Workspace!",
-		Duration = 3
-	})
 end)
 
 CreateSection("PLAYER FOLLOWER")
@@ -1283,4 +1256,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (Lite Version) Loaded")
+print("✅ Dj Hub Remastered (Loop Fix) Loaded")
