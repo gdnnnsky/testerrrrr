@@ -1,5 +1,5 @@
 --// Dj Hub (Ultimate Version - Cleaned Custom Build)
---// Updated: zuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
+--// Updated: zuuuuuuuuuuuuuuuuuuuuuuuuAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -10,6 +10,7 @@ local SoundService = game:GetService("SoundService")
 local Lighting = game:GetService("Lighting")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local VirtualUser = game:GetService("VirtualUser") 
+local VirtualInputManager = game:GetService("VirtualInputManager") -- [NEW] For better screen tap simulation
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
@@ -730,7 +731,7 @@ CreateToggle("Auto Sell Everything", function(toggled)
 end)
 
 --=============================================================================
---// AUTO OPEN BLOCK SECTION (DROPDOWN)
+--// AUTO OPEN BLOCK SECTION (DROPDOWN) - [FIXED]
 --=============================================================================
 
 local function CreateAutoOpenBlockDropdown()
@@ -792,46 +793,60 @@ task.spawn(function()
 
 		if #activeTypes > 0 and lp.Character and lp.Character:FindFirstChild("Humanoid") then
 			local humanoid = lp.Character.Humanoid
-			local toolsToOpen = {}
+			local targetTool = nil
 			
-			-- 1. Cari tool di Backpack
-			if lp.Backpack then
-				for _, tool in pairs(lp.Backpack:GetChildren()) do
-					if tool:IsA("Tool") then
-						for _, typeName in pairs(activeTypes) do
-							if isTargetItem(tool, typeName) then
-								table.insert(toolsToOpen, tool)
-							end
-						end
-					end
-				end
-			end
-			
-			-- 2. Cari tool yang sedang dipegang (Equipped) di Character
+			-- 1. Cek apakah di tangan karakter sedang memegang block target
 			local equippedTool = lp.Character:FindFirstChildOfClass("Tool")
 			if equippedTool then
 				for _, typeName in pairs(activeTypes) do
 					if isTargetItem(equippedTool, typeName) then
-						table.insert(toolsToOpen, equippedTool)
+						targetTool = equippedTool
+						break
 					end
 				end
 			end
 			
-			-- 3. Buka (Activate) semua tool yang ditemukan dengan Simulasi Klik Layar
-			for _, tool in pairs(toolsToOpen) do
-				if tool.Parent then 
-					humanoid:EquipTool(tool)
-					task.wait(0.2) -- Jeda agar tool benar-benar ter-equip di server
-					
-					tool:Activate() -- Sebagai jaga-jaga kalau game support
-					
-					-- Simulasi klik kiri (tap di layar) di titik tengah
-					pcall(function()
-						VirtualUser:CaptureController()
-						VirtualUser:ClickButton1(Vector2.new(0,0))
-					end)
-					
-					task.wait(0.3) -- Jeda sebelum lanjut ke block berikutnya
+			-- 2. Jika tidak ada di tangan, cari SATU SAJA di Backpack
+			if not targetTool and lp.Backpack then
+				for _, tool in pairs(lp.Backpack:GetChildren()) do
+					if tool:IsA("Tool") then
+						for _, typeName in pairs(activeTypes) do
+							if isTargetItem(tool, typeName) then
+								targetTool = tool
+								break
+							end
+						end
+					end
+					if targetTool then break end -- Langsung stop kalau udah nemu 1
+				end
+			end
+			
+			-- 3. Eksekusi SATU block secara tuntas sebelum lanjut ke loop berikutnya
+			if targetTool and targetTool.Parent then 
+				humanoid:EquipTool(targetTool)
+				task.wait(0.3) -- Tunggu animasi equip selesai agar server merespon
+				
+				-- Jaga-jaga kalau gamenya butuh call manual
+				pcall(function() targetTool:Activate() end)
+				
+				-- Simulasi Tap Layar menggunakan VirtualInputManager (Sangat akurat untuk meniru sentuhan pemain asli di layar)
+				pcall(function()
+					VirtualInputManager:SendMouseButtonEvent(100, 100, 0, true, game, 0)
+					task.wait(0.1)
+					VirtualInputManager:SendMouseButtonEvent(100, 100, 0, false, game, 0)
+				end)
+				
+				-- Simulasi cadangan menggunakan VirtualUser
+				pcall(function()
+					VirtualUser:CaptureController()
+					VirtualUser:ClickButton1(Vector2.new(100, 100))
+				end)
+				
+				-- LOOP MENUNGGU: Karakter tidak akan mengganti tool sampai block ini benar-benar hilang/terbuka (Timeout Max 3 detik)
+				local waitTime = 0
+				while targetTool.Parent and waitTime < 3 do
+					task.wait(0.2)
+					waitTime = waitTime + 0.2
 				end
 			end
 		end
@@ -1397,4 +1412,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (Auto Open Fix - Screen Tap) Loaded")
+print("✅ Dj Hub Remastered (Auto Open Fix - Perfect Click) Loaded")
