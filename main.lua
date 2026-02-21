@@ -62,21 +62,18 @@ uiScale.Parent = ScreenGui
 local function updateScale()
 	local camera = workspace.CurrentCamera
 	if camera then
-		-- Jika layar kecil (Cloud Gaming/HP Low Res), kecilkan UI
 		if camera.ViewportSize.Y < 500 then
-			uiScale.Scale = 0.65 -- Kecilkan jadi 65%
+			uiScale.Scale = 0.65
 		elseif camera.ViewportSize.Y < 720 then
-			uiScale.Scale = 0.8 -- Kecilkan jadi 80%
+			uiScale.Scale = 0.8
 		else
-			uiScale.Scale = 1.0 -- Normal
+			uiScale.Scale = 1.0
 		end
 	end
 end
 
--- Jalankan update scale saat start dan saat layar berubah
 updateScale()
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
--- [END FIX GUI]
 
 local function makeDraggable(frame, handle)
 	handle = handle or frame
@@ -117,16 +114,14 @@ end
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
--- [FIX SIZE] Menggunakan AnchorPoint agar posisi selalu di tengah (Responsive)
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5) 
-MainFrame.Size = UDim2.new(0, 340, 0, 320) -- Sedikit diperkecil agar pas
-MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0) -- Posisi tepat di tengah layar
+MainFrame.Size = UDim2.new(0, 340, 0, 320)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainFrame.BackgroundColor3 = colors.background
 MainFrame.BackgroundTransparency = 0.35 
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
--- Tambahkan UIScale lokal ke MainFrame juga untuk kontrol ganda
 local mainScale = Instance.new("UIScale", MainFrame)
 
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
@@ -335,14 +330,12 @@ local ftConnection = nil
 local activeInteractConnections = {} 
 local autoConsoleEnabled = false
 
--- [NEW] GLOBAL LOCK to prevent Slide features from clashing
 local actionLock = false
 
--- [NEW] Underground Mode Variables
 local autoClaimTicketEnabled = false 
 local autoCoinValentineEnabled = false 
+local autoSellEnabled = false -- [NEW] Auto Sell Variable
 
--- [NEW] Lucky Block Variables
 local slideSettings = {
 	Divine = false,
 	Infinity = false,
@@ -395,7 +388,6 @@ local function togglePlatformState(state)
 	end
 end
 
--- [NEW] Special Underground Platform Logic (-10 Studs)
 local function toggleUndergroundPlatform(state)
 	if state then
 		if not undergroundPlatform then 
@@ -429,16 +421,14 @@ local function toggleUndergroundPlatform(state)
 	end
 end
 
--- [NEW] Helper Function: Safe Slide Movement
 local function slideToPosition(targetPos)
 	local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 	
 	local dist = (Vector3.new(targetPos.X, 0, targetPos.Z) - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Magnitude
-	local speed = 600 -- Studs per second
+	local speed = 600
 	local time = dist / speed
 	
-	-- LOCK Y to Underground
 	local targetY = undergroundFixedY or targetPos.Y
 	
 	local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
@@ -698,6 +688,48 @@ CreateToggle("Auto Equip Best Block", function(toggled)
 	autoEquipEnabled = toggled
 end)
 
+-- [NEW] FITUR AUTO SELL EVERYTHING BYPASS
+CreateToggle("Auto Sell Everything", function(toggled)
+	autoSellEnabled = toggled
+	if autoSellEnabled then
+		task.spawn(function()
+			while autoSellEnabled do
+				task.wait(3) -- Jeda waktu agar tidak spam server
+				
+				-- LOGIC: Karena kita ingin bypass Prompt & GUI, kita langsung tembak (Fire) RemoteEvent-nya
+				-- Script ini akan memindai ReplicatedStorage untuk mencari remote penjual dan langsung mengaktifkannya.
+				
+				local fired = false
+				for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+					if obj:IsA("RemoteEvent") then
+						local name = string.lower(obj.Name)
+						if string.find(name, "sellall") or string.find(name, "selleverything") then
+							pcall(function() obj:FireServer() end)
+							fired = true
+						end
+					elseif obj:IsA("RemoteFunction") then
+						local name = string.lower(obj.Name)
+						if string.find(name, "sellall") or string.find(name, "selleverything") then
+							task.spawn(function() pcall(function() obj:InvokeServer() end) end)
+							fired = true
+						end
+					end
+				end
+				
+				-- Fallback: Jika nama remotenya lebih umum seperti "Sell", biasanya menggunakan argument "All"
+				if not fired then
+					for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+						if obj:IsA("RemoteEvent") and string.lower(obj.Name) == "sell" then
+							pcall(function() obj:FireServer("All") end)
+							pcall(function() obj:FireServer(true) end)
+						end
+					end
+				end
+			end
+		end)
+	end
+end)
+
 --=============================================================================
 --// LUCKY BLOCK SECTION (DROPDOWN + SLIDE MODE IMPROVED)
 --=============================================================================
@@ -748,7 +780,6 @@ local function CreateLuckyBlockDropdown()
 		for _, v in pairs(slideSettings) do
 			if v then anyEnabled = true break end
 		end
-		-- Check other features that use slide
 		if anyEnabled or autoClaimTicketEnabled or autoCoinValentineEnabled then
 			toggleUndergroundPlatform(true)
 		else
@@ -859,7 +890,6 @@ CreateToggle("Auto Reduce Lag+ (10m Loop)", function(toggled)
 		task.spawn(function()
 			while autoReduceLagEnabled do
 				
-				-- 1. Hapus Target Spesifik di Workspace
 				local targetNames = {
 					"ActiveBrainrots", "ActiveTsunamis", "BaseLocations", 
 					"Bases", "Leaderboards", "GeyserVisualVFX", 
@@ -873,24 +903,20 @@ CreateToggle("Auto Reduce Lag+ (10m Loop)", function(toggled)
 					end
 				end
 				
-				-- 3. Hapus Semua Isi di Lighting
 				for _, v in pairs(Lighting:GetChildren()) do
 					pcall(function() v:Destroy() end)
 				end
 				
-				-- Optimasi Properti Lighting Bawaan
 				Lighting.GlobalShadows = false
 				Lighting.FogEnd = 100000
 				Lighting.Brightness = 2
 				
-				-- Kirim Notifikasi Sukses
 				StarterGui:SetCore("SendNotification", {
 					Title = "LAG REDUCED +",
 					Text = "Workspace & Lighting dibersihkan (Loop 10 Menit berjalan).",
 					Duration = 3
 				})
 				
-				-- 4. Timer 10 Menit (600 Detik) dengan Pengecekan Keaktifan
 				local timer = 0
 				while autoReduceLagEnabled and timer < 600 do
 					task.wait(1)
@@ -985,7 +1011,6 @@ CreateToggle("Auto Game Console", function(toggled)
 	end
 end)
 
--- [NEW] FITUR AUTO TICKET YANG SUDAH DIPERBAIKI
 CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	autoClaimTicketEnabled = toggled
 	if toggled then 
@@ -1015,7 +1040,6 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 						local minDist = 999999
 						local myPos = lp.Character.HumanoidRootPart.Position
 						
-						-- Cek di 2 folder berbeda
 						local folders = {
 							workspace:FindFirstChild("ArcadeEventTickets"),
 							workspace:FindFirstChild("TicketBombTickets")
@@ -1048,7 +1072,6 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 							local part = targetTicket.Ticket
 							local targetPos = Vector3.new(part.Position.X, part.Position.Y - 10, part.Position.Z)
 							
-							-- Slide ke target ticket
 							slideToPosition(targetPos)
 							
 							local hrp = lp.Character.HumanoidRootPart
@@ -1062,18 +1085,13 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 							end
 							
 							collectedCount = collectedCount + 1
-							
-							-- Stop dulu (delay) setelah mengambil ticket, tidak langsung ke base
 							task.wait(0.3) 
-							
-							-- Hilangkan ticket secara lokal agar loop selanjutnya tidak mengincar ticket yang sama
 							pcall(function() targetTicket:Destroy() end)
 						else
-							break -- Kalau tidak ada ticket lagi, keluar dari loop
+							break 
 						end
 					end
 					
-					-- Jika player tadi berhasil ngambil setidaknya 1 ticket, baru balik ke base
 					if hasCollectedAny then
 						local base = workspace:FindFirstChild("SpawnLocation1")
 						if base then
@@ -1097,16 +1115,12 @@ end)
 
 CreateSection("VALENTINE EVENT")
 
--- [NEW LOGIC] Auto Coin Valentine (Underground + Magnet)
--- LOGIC: HANYA JALAN JIKA ADA FOLDER 'ValentinesCoinParts' DAN 'ValentinesCoin'
 CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 	autoCoinValentineEnabled = toggled
 	
-	-- Manage Platform State
 	if toggled then 
 		toggleUndergroundPlatform(true) 
 	else
-		-- Check other features to prevent platform loss
 		local anyLuckyBlockOn = false
 		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
 		if not anyLuckyBlockOn and not autoClaimTicketEnabled then
@@ -1114,18 +1128,15 @@ CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 		end
 	end
 
-	-- 1. MAGNET LOOP (Parallel)
-	-- collects coins within 280 studs while moving (ONLY IF COINS EXIST)
 	task.spawn(function()
 		while autoCoinValentineEnabled do
-			task.wait(0.1) -- Fast loop
+			task.wait(0.1)
 			local coinFolder = workspace:FindFirstChild("ValentinesCoinParts")
 			
 			if coinFolder and #coinFolder:GetChildren() > 0 then
 				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 				if hrp then
 					for _, item in pairs(coinFolder:GetChildren()) do
-						-- Specific name check based on prompt: ValentinesCoin
 						if item.Name == "ValentinesCoin" then 
 							local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
 							if part then
@@ -1146,27 +1157,20 @@ CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 		end
 	end)
 
-	-- 2. MOVEMENT LOOP (Event Detection Logic)
 	task.spawn(function()
 		while autoCoinValentineEnabled do
 			task.wait(0.2)
 			
-			-- Wait for ActionLock (Combo with Lucky Block)
 			if actionLock then continue end
 
-			-- DETECT EVENT STATUS
 			local coinFolder = workspace:FindFirstChild("ValentinesCoinParts")
 			local isEventActive = false
 			
-			-- Cek apakah folder ada dan didalamnya ada "ValentinesCoin"
 			if coinFolder and coinFolder:FindFirstChild("ValentinesCoin") then
 				isEventActive = true
 			end
 
 			if isEventActive then
-				-- >>> EVENT ACTIVE: RUN SLIDE LOGIC <<<
-				
-				-- Dynamic Search for Celestial Part
 				local targetPart = nil
 				for _, folder in pairs(workspace:GetChildren()) do
 					if string.find(folder.Name, "_SharedInstances") then 
@@ -1182,31 +1186,24 @@ CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 
 				if targetPart and base and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 					
-					actionLock = true -- LOCK
+					actionLock = true 
 
-					-- Slide to Celestial
 					local targetPos = Vector3.new(targetPart.Position.X, targetPart.Position.Y - 10, targetPart.Position.Z)
 					slideToPosition(targetPos)
 
-					-- Wait 5 Seconds (Collecting happens in Magnet Loop)
 					task.wait(5)
 
-					-- Slide Back to Base
 					local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
 					slideToPosition(basePos)
 
-					actionLock = false -- UNLOCK
+					actionLock = false 
 
-					-- Wait 10 Seconds at Base
 					task.wait(10)
 					
 				else
-					-- Struktur map tidak ketemu, tunggu sebentar
 					task.wait(2)
 				end
 			else
-				-- >>> EVENT INACTIVE: STOP SLIDING & WAIT <<<
-				-- Coin tidak ada, diam saja menunggu event mulai
 				task.wait(1)
 			end
 		end
@@ -1292,4 +1289,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (Loop Fix) Loaded")
+print("✅ Dj Hub Remastered (Bypass Sell + Loop Fix) Loaded")
