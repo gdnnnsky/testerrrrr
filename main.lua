@@ -1,5 +1,5 @@
 --// Dj Hub (Ultimate Version - Cleaned Custom Build)
---// Updated: zuuuuuuuuuuuuuuuuuuuuuuuuAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
+--// Updated: zAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -10,7 +10,7 @@ local SoundService = game:GetService("SoundService")
 local Lighting = game:GetService("Lighting")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local VirtualUser = game:GetService("VirtualUser") 
-local VirtualInputManager = game:GetService("VirtualInputManager") -- [NEW] For better screen tap simulation
+local VirtualInputManager = game:GetService("VirtualInputManager") 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
@@ -336,6 +336,7 @@ local actionLock = false
 local autoClaimTicketEnabled = false 
 local autoCoinValentineEnabled = false 
 local autoSellEnabled = false 
+local autoObbyMoneyEnabled = false -- [NEW] Auto Obby Money Variable
 
 local slideSettings = {
 	Divine = false,
@@ -795,7 +796,6 @@ task.spawn(function()
 			local humanoid = lp.Character.Humanoid
 			local targetTool = nil
 			
-			-- 1. Cek apakah di tangan karakter sedang memegang block target
 			local equippedTool = lp.Character:FindFirstChildOfClass("Tool")
 			if equippedTool then
 				for _, typeName in pairs(activeTypes) do
@@ -806,7 +806,6 @@ task.spawn(function()
 				end
 			end
 			
-			-- 2. Jika tidak ada di tangan, cari SATU SAJA di Backpack
 			if not targetTool and lp.Backpack then
 				for _, tool in pairs(lp.Backpack:GetChildren()) do
 					if tool:IsA("Tool") then
@@ -817,32 +816,27 @@ task.spawn(function()
 							end
 						end
 					end
-					if targetTool then break end -- Langsung stop kalau udah nemu 1
+					if targetTool then break end 
 				end
 			end
 			
-			-- 3. Eksekusi SATU block secara tuntas sebelum lanjut ke loop berikutnya
 			if targetTool and targetTool.Parent then 
 				humanoid:EquipTool(targetTool)
-				task.wait(0.3) -- Tunggu animasi equip selesai agar server merespon
+				task.wait(0.3) 
 				
-				-- Jaga-jaga kalau gamenya butuh call manual
 				pcall(function() targetTool:Activate() end)
 				
-				-- Simulasi Tap Layar menggunakan VirtualInputManager (Sangat akurat untuk meniru sentuhan pemain asli di layar)
 				pcall(function()
 					VirtualInputManager:SendMouseButtonEvent(100, 100, 0, true, game, 0)
 					task.wait(0.1)
 					VirtualInputManager:SendMouseButtonEvent(100, 100, 0, false, game, 0)
 				end)
 				
-				-- Simulasi cadangan menggunakan VirtualUser
 				pcall(function()
 					VirtualUser:CaptureController()
 					VirtualUser:ClickButton1(Vector2.new(100, 100))
 				end)
 				
-				-- LOOP MENUNGGU: Karakter tidak akan mengganti tool sampai block ini benar-benar hilang/terbuka (Timeout Max 3 detik)
 				local waitTime = 0
 				while targetTool.Parent and waitTime < 3 do
 					task.wait(0.2)
@@ -903,7 +897,7 @@ local function CreateLuckyBlockDropdown()
 		for _, v in pairs(slideSettings) do
 			if v then anyEnabled = true break end
 		end
-		if anyEnabled or autoClaimTicketEnabled or autoCoinValentineEnabled then
+		if anyEnabled or autoClaimTicketEnabled or autoCoinValentineEnabled or autoObbyMoneyEnabled then
 			toggleUndergroundPlatform(true)
 		else
 			toggleUndergroundPlatform(false)
@@ -1141,7 +1135,7 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	else
 		local anyLuckyBlockOn = false
 		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
-		if not anyLuckyBlockOn and not autoCoinValentineEnabled then
+		if not anyLuckyBlockOn and not autoCoinValentineEnabled and not autoObbyMoneyEnabled then
 			toggleUndergroundPlatform(false)
 		end
 	end
@@ -1246,7 +1240,7 @@ CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 	else
 		local anyLuckyBlockOn = false
 		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
-		if not anyLuckyBlockOn and not autoClaimTicketEnabled then
+		if not anyLuckyBlockOn and not autoClaimTicketEnabled and not autoObbyMoneyEnabled then
 			toggleUndergroundPlatform(false)
 		end
 	end
@@ -1333,6 +1327,118 @@ CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 	end)
 end)
 
+--=============================================================================
+--// MONEY EVENT
+--=============================================================================
+
+CreateSection("MONEY EVENT")
+
+-- [NEW] FITUR AUTO OBBY MONEY (UNDERGROUND)
+CreateToggle("Auto Obby Money (Underground)", function(toggled)
+	autoObbyMoneyEnabled = toggled
+	
+	if toggled then 
+		toggleUndergroundPlatform(true) 
+	else
+		local anyLuckyBlockOn = false
+		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
+		if not anyLuckyBlockOn and not autoClaimTicketEnabled and not autoCoinValentineEnabled then
+			toggleUndergroundPlatform(false)
+		end
+	end
+
+	if autoObbyMoneyEnabled then
+		task.spawn(function()
+			while autoObbyMoneyEnabled do
+				task.wait(1)
+				
+				if actionLock then continue end
+
+				-- Cek ketersediaan bagian akhir dari obby (Tanda event obby sedang berjalan)
+				local end1, end2, end3
+				for _, v in pairs(workspace:GetDescendants()) do
+					if v:IsA("BasePart") then
+						if v.Name == "MoneyObby1End" then end1 = v
+						elseif v.Name == "MoneyObby2End" then end2 = v
+						elseif v.Name == "MoneyObby3End" then end3 = v
+						end
+					end
+				end
+
+				if end1 and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+					actionLock = true 
+
+					-- ACTION 1: Hapus Semua Lava secara langsung
+					for _, v in pairs(workspace:GetDescendants()) do
+						if v:IsA("BasePart") and v.Name == "Lava" then
+							pcall(function() v:Destroy() end)
+						end
+					end
+
+					local hrp = lp.Character.HumanoidRootPart
+
+					-- Helper Logic: Meluncur ke target bawah tanah, lalu sentuh titiknya dengan CFrame / firetouch
+					local function slideAndTouch(part)
+						if part and part.Parent then
+							-- Meluncur persis di bawah target (posisi aman underground)
+							local targetPos = Vector3.new(part.Position.X, part.Position.Y - 10, part.Position.Z)
+							slideToPosition(targetPos)
+							
+							-- Setelah sampai pas dibawahnya, sentuh target untuk nge-trigger checkpoint
+							if firetouchinterest then
+								firetouchinterest(hrp, part, 0)
+								firetouchinterest(hrp, part, 1)
+							else
+								-- Jika tidak ada firetouchinterest, naikan sedikit untuk menyentuhnya manual
+								hrp.CFrame = part.CFrame
+							end
+						end
+					end
+
+					-- ACTION 2: Eksekusi Slide Sequence
+					
+					-- Phase 1 (Obby 1)
+					slideAndTouch(end1)
+					task.wait(5) -- Jeda waktu respawn di MoneyCheckpoint1
+					
+					-- Phase 2 (Cari ulang end2 untuk jaga-jaga kalau partnya dimuat ulang game saat teleport)
+					local currentEnd2
+					for _, v in pairs(workspace:GetDescendants()) do
+						if v:IsA("BasePart") and v.Name == "MoneyObby2End" then currentEnd2 = v break end
+					end
+					
+					if currentEnd2 then
+						slideAndTouch(currentEnd2)
+						task.wait(5) -- Jeda waktu respawn di MoneyCheckpoint2
+					end
+					
+					-- Phase 3 (Cari ulang end3)
+					local currentEnd3
+					for _, v in pairs(workspace:GetDescendants()) do
+						if v:IsA("BasePart") and v.Name == "MoneyObby3End" then currentEnd3 = v break end
+					end
+					
+					if currentEnd3 then
+						slideAndTouch(currentEnd3)
+						task.wait(2) -- Jeda penyelesaian obby 3
+					end
+
+					-- ACTION 3: Kembali meluncur ke Base dengan aman
+					local base = workspace:FindFirstChild("SpawnLocation1")
+					if base then
+						local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+						slideToPosition(basePos)
+					end
+					
+					-- Lepas kunci lock & diam agar tidak nge-loop terus-terusan selagi eventnya belum hilang total
+					actionLock = false
+					task.wait(10) 
+				end
+			end
+		end)
+	end
+end)
+
 CreateSection("MISC")
 
 CreateButton("Delete Safe Walls", function()
@@ -1412,4 +1518,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (Auto Open Fix - Perfect Click) Loaded")
+print("✅ Dj Hub Remastered (Auto Obby Added) Loaded")
