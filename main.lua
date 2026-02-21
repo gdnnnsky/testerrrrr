@@ -1,5 +1,5 @@
 --// Dj Hub (Ultimate Version - Cleaned Custom Build)
---// Updated: zuuuuuuuuuuuuuuuuuuuuuuuuAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
+--// Updated: zuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -344,7 +344,6 @@ local slideSettings = {
 	Mythical = false
 }
 
--- [NEW] Variables for Auto Open Block
 local autoOpenSettings = {
 	Money = false,
 	Candy = false,
@@ -765,7 +764,7 @@ local function CreateAutoOpenBlockDropdown()
 		if expanded then
 			DropdownBtn.Text = "AUTO OPEN BLOCK ▲"
 			DropdownFrame.Visible = true
-			DropdownFrame.Size = UDim2.new(1, 0, 0, 115) -- Disesuaikan untuk 3 tombol
+			DropdownFrame.Size = UDim2.new(1, 0, 0, 115) 
 		else
 			DropdownBtn.Text = "AUTO OPEN BLOCK ▼"
 			DropdownFrame.Size = UDim2.new(1, 0, 0, 0)
@@ -818,13 +817,21 @@ task.spawn(function()
 				end
 			end
 			
-			-- 3. Buka (Activate) semua tool yang ditemukan
+			-- 3. Buka (Activate) semua tool yang ditemukan dengan Simulasi Klik Layar
 			for _, tool in pairs(toolsToOpen) do
-				if tool.Parent then -- pastikan tool belum hancur
+				if tool.Parent then 
 					humanoid:EquipTool(tool)
-					task.wait(0.1) -- Jeda kecil agar sistem game menyadari tool sudah dipegang
-					tool:Activate()
-					task.wait(0.2) -- Jeda sebelum buka block selanjutnya agar tidak spam
+					task.wait(0.2) -- Jeda agar tool benar-benar ter-equip di server
+					
+					tool:Activate() -- Sebagai jaga-jaga kalau game support
+					
+					-- Simulasi klik kiri (tap di layar) di titik tengah
+					pcall(function()
+						VirtualUser:CaptureController()
+						VirtualUser:ClickButton1(Vector2.new(0,0))
+					end)
+					
+					task.wait(0.3) -- Jeda sebelum lanjut ke block berikutnya
 				end
 			end
 		end
@@ -1390,4 +1397,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (Auto Open Block Added) Loaded")
+print("✅ Dj Hub Remastered (Auto Open Fix - Screen Tap) Loaded")
