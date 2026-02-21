@@ -1,5 +1,5 @@
 --// Dj Hub (Ultimate Version - Cleaned Custom Build)
---// Updated: Auto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
+--// Updated: zuuuuuuuuuuuuuuuuuuuuuuuuAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -862,20 +862,13 @@ CreateToggle("Auto Reduce Lag+ (10m Loop)", function(toggled)
 				-- 1. Hapus Target Spesifik di Workspace
 				local targetNames = {
 					"ActiveBrainrots", "ActiveTsunamis", "BaseLocations", 
-					"Bases", "Debris", "Leaderboards", "GeyserVisualVFX", 
-					"Misc", "SellPoint", "SpawnMachines"
+					"Bases", "Leaderboards", "GeyserVisualVFX", 
+					"Misc", "SpawnMachines"
 				}
 				
 				for _, name in pairs(targetNames) do
 					local obj = workspace:FindFirstChild(name)
 					if obj then
-						pcall(function() obj:Destroy() end)
-					end
-				end
-				
-				-- 2. Deteksi & Hapus Folder Dinamis yang mengandung _SharedInstances
-				for _, obj in pairs(workspace:GetChildren()) do
-					if string.find(obj.Name, "_SharedInstances") then
 						pcall(function() obj:Destroy() end)
 					end
 				end
