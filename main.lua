@@ -985,6 +985,7 @@ CreateToggle("Auto Game Console", function(toggled)
 	end
 end)
 
+-- [NEW] FITUR AUTO TICKET YANG SUDAH DIPERBAIKI
 CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	autoClaimTicketEnabled = toggled
 	if toggled then 
@@ -1004,21 +1005,53 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 				
 				if actionLock then continue end
 				
-				local folder = workspace:FindFirstChild("ArcadeEventTickets")
-				local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-				
-				if folder and hrp then
-					local foundTicket = false
+				if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+					local collectedCount = 0
+					local maxCollect = 10
+					local hasCollectedAny = false
 					
-					for _, model in pairs(folder:GetChildren()) do
-						if model.Name == "Ticket" and model:FindFirstChild("Ticket") then
-							actionLock = true
-							foundTicket = true
+					local function getClosestTicket()
+						local closest = nil
+						local minDist = 999999
+						local myPos = lp.Character.HumanoidRootPart.Position
+						
+						-- Cek di 2 folder berbeda
+						local folders = {
+							workspace:FindFirstChild("ArcadeEventTickets"),
+							workspace:FindFirstChild("TicketBombTickets")
+						}
+						
+						for _, folder in pairs(folders) do
+							if folder then
+								for _, model in pairs(folder:GetChildren()) do
+									if model.Name == "Ticket" and model:FindFirstChild("Ticket") then
+										local part = model.Ticket
+										local dist = (Vector3.new(part.Position.X, 0, part.Position.Z) - Vector3.new(myPos.X, 0, myPos.Z)).Magnitude
+										if dist < minDist then
+											minDist = dist
+											closest = model
+										end
+									end
+								end
+							end
+						end
+						return closest
+					end
+					
+					while collectedCount < maxCollect do
+						local targetTicket = getClosestTicket()
+						
+						if targetTicket then
+							actionLock = true 
+							hasCollectedAny = true
 							
-							local part = model.Ticket
-							local targetPos = part.Position
+							local part = targetTicket.Ticket
+							local targetPos = Vector3.new(part.Position.X, part.Position.Y - 10, part.Position.Z)
+							
+							-- Slide ke target ticket
 							slideToPosition(targetPos)
 							
+							local hrp = lp.Character.HumanoidRootPart
 							if part:FindFirstChild("TouchInterest") then
 								if firetouchinterest then
 									firetouchinterest(hrp, part, 0)
@@ -1028,12 +1061,20 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 								end
 							end
 							
-							task.wait(0.2)
-							break 
+							collectedCount = collectedCount + 1
+							
+							-- Stop dulu (delay) setelah mengambil ticket, tidak langsung ke base
+							task.wait(0.3) 
+							
+							-- Hilangkan ticket secara lokal agar loop selanjutnya tidak mengincar ticket yang sama
+							pcall(function() targetTicket:Destroy() end)
+						else
+							break -- Kalau tidak ada ticket lagi, keluar dari loop
 						end
 					end
 					
-					if foundTicket then
+					-- Jika player tadi berhasil ngambil setidaknya 1 ticket, baru balik ke base
+					if hasCollectedAny then
 						local base = workspace:FindFirstChild("SpawnLocation1")
 						if base then
 							local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
@@ -1041,6 +1082,8 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 						end
 						actionLock = false 
 						task.wait(1) 
+					else
+						actionLock = false
 					end
 				end
 			end
