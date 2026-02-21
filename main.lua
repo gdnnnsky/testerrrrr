@@ -334,7 +334,7 @@ local actionLock = false
 
 local autoClaimTicketEnabled = false 
 local autoCoinValentineEnabled = false 
-local autoSellEnabled = false -- [NEW] Auto Sell Variable
+local autoSellEnabled = false 
 
 local slideSettings = {
 	Divine = false,
@@ -342,6 +342,13 @@ local slideSettings = {
 	Celestial = false,
 	Secret = false,
 	Mythical = false
+}
+
+-- [NEW] Variables for Auto Open Block
+local autoOpenSettings = {
+	Money = false,
+	Candy = false,
+	Celestial = false
 }
 
 local undergroundPlatform = nil
@@ -688,17 +695,12 @@ CreateToggle("Auto Equip Best Block", function(toggled)
 	autoEquipEnabled = toggled
 end)
 
--- [NEW] FITUR AUTO SELL EVERYTHING BYPASS
 CreateToggle("Auto Sell Everything", function(toggled)
 	autoSellEnabled = toggled
 	if autoSellEnabled then
 		task.spawn(function()
 			while autoSellEnabled do
-				task.wait(3) -- Jeda waktu agar tidak spam server
-				
-				-- LOGIC: Karena kita ingin bypass Prompt & GUI, kita langsung tembak (Fire) RemoteEvent-nya
-				-- Script ini akan memindai ReplicatedStorage untuk mencari remote penjual dan langsung mengaktifkannya.
-				
+				task.wait(3) 
 				local fired = false
 				for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
 					if obj:IsA("RemoteEvent") then
@@ -715,8 +717,6 @@ CreateToggle("Auto Sell Everything", function(toggled)
 						end
 					end
 				end
-				
-				-- Fallback: Jika nama remotenya lebih umum seperti "Sell", biasanya menggunakan argument "All"
 				if not fired then
 					for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
 						if obj:IsA("RemoteEvent") and string.lower(obj.Name) == "sell" then
@@ -727,6 +727,107 @@ CreateToggle("Auto Sell Everything", function(toggled)
 				end
 			end
 		end)
+	end
+end)
+
+--=============================================================================
+--// AUTO OPEN BLOCK SECTION (DROPDOWN)
+--=============================================================================
+
+local function CreateAutoOpenBlockDropdown()
+	local DropdownBtn = Instance.new("TextButton")
+	DropdownBtn.Name = "DropdownBtnOpenBlock"
+	DropdownBtn.Size = UDim2.new(1, 0, 0, 36)
+	DropdownBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	DropdownBtn.Text = "AUTO OPEN BLOCK ▼"
+	DropdownBtn.TextColor3 = colors.accent
+	DropdownBtn.Font = Enum.Font.GothamBold
+	DropdownBtn.TextSize = 13
+	DropdownBtn.Parent = Container
+	Instance.new("UICorner", DropdownBtn).CornerRadius = UDim.new(0, 6)
+
+	local DropdownFrame = Instance.new("Frame")
+	DropdownFrame.Name = "DropdownFrameOpenBlock"
+	DropdownFrame.Size = UDim2.new(1, 0, 0, 0)
+	DropdownFrame.BackgroundTransparency = 1
+	DropdownFrame.ClipsDescendants = true 
+	DropdownFrame.Visible = false
+	DropdownFrame.Parent = Container
+
+	local DropList = Instance.new("UIListLayout")
+	DropList.Parent = DropdownFrame
+	DropList.Padding = UDim.new(0, 4)
+	DropList.SortOrder = Enum.SortOrder.LayoutOrder
+
+	local expanded = false
+	DropdownBtn.MouseButton1Click:Connect(function()
+		expanded = not expanded
+		if expanded then
+			DropdownBtn.Text = "AUTO OPEN BLOCK ▲"
+			DropdownFrame.Visible = true
+			DropdownFrame.Size = UDim2.new(1, 0, 0, 115) -- Disesuaikan untuk 3 tombol
+		else
+			DropdownBtn.Text = "AUTO OPEN BLOCK ▼"
+			DropdownFrame.Size = UDim2.new(1, 0, 0, 0)
+			task.delay(0.2, function()
+				if not expanded then DropdownFrame.Visible = false end
+			end)
+		end
+	end)
+
+	CreateToggle("Open Money Block", function(t) autoOpenSettings.Money = t end, DropdownFrame)
+	CreateToggle("Open Candy Block", function(t) autoOpenSettings.Candy = t end, DropdownFrame)
+	CreateToggle("Open Celestial Block", function(t) autoOpenSettings.Celestial = t end, DropdownFrame)
+end
+
+CreateAutoOpenBlockDropdown()
+
+task.spawn(function()
+	while true do
+		task.wait(0.5) 
+		
+		local activeTypes = {}
+		if autoOpenSettings.Money then table.insert(activeTypes, "Money Block") end
+		if autoOpenSettings.Candy then table.insert(activeTypes, "Candy Block") end
+		if autoOpenSettings.Celestial then table.insert(activeTypes, "Celestial Block") end
+
+		if #activeTypes > 0 and lp.Character and lp.Character:FindFirstChild("Humanoid") then
+			local humanoid = lp.Character.Humanoid
+			local toolsToOpen = {}
+			
+			-- 1. Cari tool di Backpack
+			if lp.Backpack then
+				for _, tool in pairs(lp.Backpack:GetChildren()) do
+					if tool:IsA("Tool") then
+						for _, typeName in pairs(activeTypes) do
+							if isTargetItem(tool, typeName) then
+								table.insert(toolsToOpen, tool)
+							end
+						end
+					end
+				end
+			end
+			
+			-- 2. Cari tool yang sedang dipegang (Equipped) di Character
+			local equippedTool = lp.Character:FindFirstChildOfClass("Tool")
+			if equippedTool then
+				for _, typeName in pairs(activeTypes) do
+					if isTargetItem(equippedTool, typeName) then
+						table.insert(toolsToOpen, equippedTool)
+					end
+				end
+			end
+			
+			-- 3. Buka (Activate) semua tool yang ditemukan
+			for _, tool in pairs(toolsToOpen) do
+				if tool.Parent then -- pastikan tool belum hancur
+					humanoid:EquipTool(tool)
+					task.wait(0.1) -- Jeda kecil agar sistem game menyadari tool sudah dipegang
+					tool:Activate()
+					task.wait(0.2) -- Jeda sebelum buka block selanjutnya agar tidak spam
+				end
+			end
+		end
 	end
 end)
 
@@ -1289,4 +1390,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (Bypass Sell + Loop Fix) Loaded")
+print("✅ Dj Hub Remastered (Auto Open Block Added) Loaded")
