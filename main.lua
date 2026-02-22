@@ -1,7 +1,7 @@
 --// Dj Hub (Ultimate Version - Cleaned Custom Build)
 --// Updated: zAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
 --// Added: Auto Collect DoomCoin (Underground)
---// Patched: Lucky Block Safe Pathing & Dynamic Base Location Tracker
+--// Patched: Lucky Block 3s Check & Obby Money UI Notification Tracker & Base Path Fix
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -369,20 +369,23 @@ local autoReduceLagEnabled = false
 --// LOGIC FUNCTIONS
 --=============================================================================
 
--- [PATCHED] Fungsi Global untuk mencari lokasi Base terbaru
+-- [PATCHED]: Safe Function to fetch the new base path without breaking old mechanics
 local function getBaseLocation()
-	local gameFolder = workspace:FindFirstChild("GameObjects") or workspace:FindFirstChild("GameObjecrs")
-	if gameFolder then
-		local placeSpecific = gameFolder:FindFirstChild("PlaceSpecific")
+	local gameObjects = workspace:FindFirstChild("GameObjects")
+	if gameObjects then
+		local placeSpecific = gameObjects:FindFirstChild("PlaceSpecific")
 		if placeSpecific then
-			local rootFolder = placeSpecific:FindFirstChild("Root")
+			local rootFolder = placeSpecific:FindFirstChild("root")
 			if rootFolder then
-				local spawnLoc = rootFolder:FindFirstChild("SpawnLocation") or rootFolder:FindFirstChild("SpawnLocation1")
-				if spawnLoc then return spawnLoc end
+				local actualRoot = rootFolder:FindFirstChild("root")
+				if actualRoot then
+					return actualRoot
+				end
 			end
 		end
 	end
-	return workspace:FindFirstChild("SpawnLocation") or workspace:FindFirstChild("SpawnLocation1")
+	-- Fallback to the old spawn location if the folder hasn't loaded properly
+	return workspace:FindFirstChild("SpawnLocation1")
 end
 
 local function togglePlatformState(state)
@@ -448,7 +451,6 @@ local function toggleUndergroundPlatform(state)
 	end
 end
 
--- [PATCHED] slideToPosition Timeout logic
 local function slideToPosition(targetPos)
 	local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
@@ -457,8 +459,6 @@ local function slideToPosition(targetPos)
 	local speed = 600
 	local time = dist / speed
 	
-	if time <= 0 then return end
-	
 	local targetY = undergroundFixedY or targetPos.Y
 	
 	local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
@@ -466,17 +466,9 @@ local function slideToPosition(targetPos)
 	
 	local tween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
 	tween:Play()
+	tween.Completed:Wait()
 	
-	local start = tick()
-	while tween.PlaybackState == Enum.PlaybackState.Playing and (tick() - start) < (time + 1) do
-		task.wait(0.1)
-		if not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then
-			tween:Cancel()
-			break
-		end
-	end
-	
-	if hrp then hrp.AssemblyLinearVelocity = Vector3.zero end
+	hrp.AssemblyLinearVelocity = Vector3.zero
 end
 
 local function isTargetItem(tool, keyword)
@@ -762,7 +754,7 @@ CreateToggle("Auto Sell Everything", function(toggled)
 end)
 
 --=============================================================================
---// AUTO OPEN BLOCK SECTION
+--// AUTO OPEN BLOCK SECTION (DROPDOWN) - [FIXED]
 --=============================================================================
 
 local function CreateAutoOpenBlockDropdown()
@@ -878,7 +870,7 @@ task.spawn(function()
 end)
 
 --=============================================================================
---// LUCKY BLOCK SECTION (PATCHED: Safe Pathing & Loop Fix)
+--// LUCKY BLOCK SECTION (DROPDOWN + SLIDE MODE IMPROVED)
 --=============================================================================
 
 local function CreateLuckyBlockDropdown()
@@ -950,11 +942,11 @@ task.spawn(function()
 		if actionLock then continue end
 
 		local activeTypes = {}
-		if slideSettings.Divine then table.insert(activeTypes, "divine") end
-		if slideSettings.Infinity then table.insert(activeTypes, "infinity") end
-		if slideSettings.Celestial then table.insert(activeTypes, "celestial") end
-		if slideSettings.Secret then table.insert(activeTypes, "secret") end
-		if slideSettings.Mythical then table.insert(activeTypes, "mythical") end
+		if slideSettings.Divine then table.insert(activeTypes, "Divine") end
+		if slideSettings.Infinity then table.insert(activeTypes, "Infinity") end
+		if slideSettings.Celestial then table.insert(activeTypes, "Celestial") end
+		if slideSettings.Secret then table.insert(activeTypes, "Secret") end
+		if slideSettings.Mythical then table.insert(activeTypes, "Mythical") end
 
 		if #activeTypes > 0 and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 			local folder = workspace:FindFirstChild("ActiveLuckyBlocks")
@@ -962,7 +954,6 @@ task.spawn(function()
 			if folder then
 				local collectedCount = 0
 				local maxCollect = 3
-				local collectedBlacklist = {}
 				
 				local function getClosestBlock()
 					local closest = nil
@@ -970,12 +961,9 @@ task.spawn(function()
 					local myPos = lp.Character.HumanoidRootPart.Position
 					
 					for _, model in pairs(folder:GetChildren()) do
-						if collectedBlacklist[model] then continue end
-						
 						local isValidType = false
-						local lowerName = string.lower(model.Name)
 						for _, typeName in pairs(activeTypes) do
-							if string.find(lowerName, typeName) then isValidType = true break end
+							if string.find(model.Name, typeName) then isValidType = true break end
 						end
 						
 						if isValidType and model:FindFirstChild("RootPart") then
@@ -995,21 +983,12 @@ task.spawn(function()
 					
 					if targetModel then
 						actionLock = true 
-						collectedBlacklist[targetModel] = true
-						
 						local root = targetModel.RootPart
-						
-						-- Safe Pathing: Turun dalam, slide di bawah, baru naik
-						local currentPos = lp.Character.HumanoidRootPart.Position
-						local deepY = undergroundFixedY and (undergroundFixedY - 20) or (currentPos.Y - 30)
-						
-						slideToPosition(Vector3.new(currentPos.X, deepY, currentPos.Z))
-						slideToPosition(Vector3.new(root.Position.X, deepY, root.Position.Z))
 						
 						local targetPos = Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z)
 						slideToPosition(targetPos) 
 						
-						local prompt = root:FindFirstChild("ProximityPrompt") or root:FindFirstChildWhichIsA("ProximityPrompt", true)
+						local prompt = root:FindFirstChild("ProximityPrompt")
 						if prompt then
 							for i = 1, 10 do
 								if not root.Parent or not prompt.Parent then break end
@@ -1020,10 +999,14 @@ task.spawn(function()
 						
 						collectedCount = collectedCount + 1
 						
-						local waitTime = 0
-						while targetModel.Parent and waitTime < 2 do
+						-- [PATCHED] Wait 3 seconds to check if another target block is spawned
+						if collectedCount < maxCollect then
+							task.wait(3)
+							if not getClosestBlock() then
+								break -- No block found after 3 seconds, break the loop and return to base
+							end
+						else
 							task.wait(0.2)
-							waitTime = waitTime + 0.2
 						end
 					else
 						break 
@@ -1035,8 +1018,6 @@ task.spawn(function()
 					if base then
 						local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
 						slideToPosition(basePos)
-					else
-						slideToPosition(Vector3.new(0, 10, 0))
 					end
 					actionLock = false 
 					task.wait(1) 
@@ -1397,6 +1378,7 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 	end
 
 	if autoObbyMoneyEnabled then
+		-- [PATCHED] Membuat penyimpanan UI Tracking di luar loop agar tidak bolak-balik
 		local obbyState = { o1 = false, o2 = false, o3 = false }
 		
 		task.spawn(function()
@@ -1415,12 +1397,14 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 					end
 				end
 				
+				-- Jika obby event hilang sama sekali, reset state 
 				if not end1 and not end2 and not end3 then
 					obbyState.o1 = false
 					obbyState.o2 = false
 					obbyState.o3 = false
 				end
 
+				-- Fungsi Pengecek Notifikasi UI
 				local function checkUIForObby()
 					local pg = lp:FindFirstChild("PlayerGui")
 					if pg then
@@ -1437,10 +1421,11 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 					end
 				end
 
-				checkUIForObby()
+				checkUIForObby() -- Cek notifikasi sebelum bergerak
 
 				if end1 and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 					
+					-- Apabila ketiga Obby sudah selesai, skip dan tetap stay di base
 					if obbyState.o1 and obbyState.o2 and obbyState.o3 then
 						continue
 					end
@@ -1502,6 +1487,7 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 
 					checkUIForObby()
 
+					-- Evaluasi apakah ketiga-tiganya udah tamat
 					if obbyState.o1 and obbyState.o2 and obbyState.o3 then
 						local base = getBaseLocation()
 						if base then
@@ -1509,7 +1495,7 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 							slideToPosition(basePos)
 						end
 						actionLock = false
-						task.wait(10)
+						task.wait(10) -- Standby lama saat obby sudah tamat total
 					else
 						actionLock = false
 						task.wait(2) 
@@ -1650,4 +1636,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (Safe Pathing & Base Fix) Loaded")
+print("✅ Dj Hub Remastered (Bug Fixes Applied) Loaded")
