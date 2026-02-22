@@ -1,6 +1,7 @@
 --// Dj Hub (Ultimate Version - Cleaned Custom Build)
 --// Updated: zAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
 --// Added: Auto Collect DoomCoin (Underground)
+--// Patched: Lucky Block 3s Check & Obby Money UI Notification Tracker
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -338,7 +339,7 @@ local autoClaimTicketEnabled = false
 local autoCoinValentineEnabled = false 
 local autoSellEnabled = false 
 local autoObbyMoneyEnabled = false 
-local autoCollectDoomCoinEnabled = false -- [NEW] Auto Collect DoomCoin Variable
+local autoCollectDoomCoinEnabled = false 
 
 local slideSettings = {
 	Divine = false,
@@ -899,7 +900,6 @@ local function CreateLuckyBlockDropdown()
 		for _, v in pairs(slideSettings) do
 			if v then anyEnabled = true break end
 		end
-		-- [UPDATED] Menambahkan autoCollectDoomCoinEnabled agar underground tidak hilang saat DoomCoin aktif
 		if anyEnabled or autoClaimTicketEnabled or autoCoinValentineEnabled or autoObbyMoneyEnabled or autoCollectDoomCoinEnabled then
 			toggleUndergroundPlatform(true)
 		else
@@ -979,7 +979,16 @@ task.spawn(function()
 						end
 						
 						collectedCount = collectedCount + 1
-						task.wait(0.2)
+						
+						-- [PATCHED] Wait 3 seconds to check if another target block is spawned
+						if collectedCount < maxCollect then
+							task.wait(3)
+							if not getClosestBlock() then
+								break -- No block found after 3 seconds, break the loop and return to base
+							end
+						else
+							task.wait(0.2)
+						end
 					else
 						break 
 					end
@@ -1138,7 +1147,6 @@ CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	else
 		local anyLuckyBlockOn = false
 		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
-		-- [UPDATED] Menambahkan autoCollectDoomCoinEnabled agar underground tidak hilang secara tidak sengaja
 		if not anyLuckyBlockOn and not autoCoinValentineEnabled and not autoObbyMoneyEnabled and not autoCollectDoomCoinEnabled then
 			toggleUndergroundPlatform(false)
 		end
@@ -1244,7 +1252,6 @@ CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 	else
 		local anyLuckyBlockOn = false
 		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
-		-- [UPDATED] Menambahkan pengecekan agar underground tidak hilang
 		if not anyLuckyBlockOn and not autoClaimTicketEnabled and not autoObbyMoneyEnabled and not autoCollectDoomCoinEnabled then
 			toggleUndergroundPlatform(false)
 		end
@@ -1346,13 +1353,15 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 	else
 		local anyLuckyBlockOn = false
 		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
-		-- [UPDATED] Menambahkan pengecekan agar underground tidak hilang
 		if not anyLuckyBlockOn and not autoClaimTicketEnabled and not autoCoinValentineEnabled and not autoCollectDoomCoinEnabled then
 			toggleUndergroundPlatform(false)
 		end
 	end
 
 	if autoObbyMoneyEnabled then
+		-- [PATCHED] Membuat penyimpanan UI Tracking di luar loop agar tidak bolak-balik
+		local obbyState = { o1 = false, o2 = false, o3 = false }
+		
 		task.spawn(function()
 			while autoObbyMoneyEnabled do
 				task.wait(1)
@@ -1368,8 +1377,40 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 						end
 					end
 				end
+				
+				-- Jika obby event hilang sama sekali, reset state 
+				if not end1 and not end2 and not end3 then
+					obbyState.o1 = false
+					obbyState.o2 = false
+					obbyState.o3 = false
+				end
+
+				-- Fungsi Pengecek Notifikasi UI
+				local function checkUIForObby()
+					local pg = lp:FindFirstChild("PlayerGui")
+					if pg then
+						local items = pg:FindFirstChild("NewNotifications") and pg.NewNotifications:FindFirstChild("Items")
+						if items then
+							for _, desc in pairs(items:GetDescendants()) do
+								if desc:IsA("TextLabel") and desc.Text then
+									if string.find(desc.Text, "completed Obby 1 first!") then obbyState.o1 = true end
+									if string.find(desc.Text, "completed Obby 2 first!") then obbyState.o2 = true end
+									if string.find(desc.Text, "completed Obby 3 first!") then obbyState.o3 = true end
+								end
+							end
+						end
+					end
+				end
+
+				checkUIForObby() -- Cek notifikasi sebelum bergerak
 
 				if end1 and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+					
+					-- Apabila ketiga Obby sudah selesai, skip dan tetap stay di base
+					if obbyState.o1 and obbyState.o2 and obbyState.o3 then
+						continue
+					end
+					
 					actionLock = true 
 
 					for _, v in pairs(workspace:GetDescendants()) do
@@ -1394,37 +1435,52 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 						end
 					end
 					
-					slideAndTouch(end1)
-					task.wait(5) 
-					
-					local currentEnd2
-					for _, v in pairs(workspace:GetDescendants()) do
-						if v:IsA("BasePart") and v.Name == "MoneyObby2End" then currentEnd2 = v break end
-					end
-					
-					if currentEnd2 then
-						slideAndTouch(currentEnd2)
+					if not obbyState.o1 then
+						slideAndTouch(end1)
 						task.wait(5) 
 					end
 					
-					local currentEnd3
-					for _, v in pairs(workspace:GetDescendants()) do
-						if v:IsA("BasePart") and v.Name == "MoneyObby3End" then currentEnd3 = v break end
+					checkUIForObby()
+					
+					if not obbyState.o2 then
+						local currentEnd2
+						for _, v in pairs(workspace:GetDescendants()) do
+							if v:IsA("BasePart") and v.Name == "MoneyObby2End" then currentEnd2 = v break end
+						end
+						if currentEnd2 then
+							slideAndTouch(currentEnd2)
+							task.wait(5) 
+						end
 					end
 					
-					if currentEnd3 then
-						slideAndTouch(currentEnd3)
-						task.wait(2) 
+					checkUIForObby()
+					
+					if not obbyState.o3 then
+						local currentEnd3
+						for _, v in pairs(workspace:GetDescendants()) do
+							if v:IsA("BasePart") and v.Name == "MoneyObby3End" then currentEnd3 = v break end
+						end
+						if currentEnd3 then
+							slideAndTouch(currentEnd3)
+							task.wait(2) 
+						end
 					end
 
-					local base = workspace:FindFirstChild("SpawnLocation1")
-					if base then
-						local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
-						slideToPosition(basePos)
+					checkUIForObby()
+
+					-- Evaluasi apakah ketiga-tiganya udah tamat
+					if obbyState.o1 and obbyState.o2 and obbyState.o3 then
+						local base = workspace:FindFirstChild("SpawnLocation1")
+						if base then
+							local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+							slideToPosition(basePos)
+						end
+						actionLock = false
+						task.wait(10) -- Standby lama saat obby sudah tamat total
+					else
+						actionLock = false
+						task.wait(2) 
 					end
-					
-					actionLock = false
-					task.wait(10) 
 				end
 			end
 		end)
@@ -1454,20 +1510,17 @@ CreateToggle("Auto Collect DoomCoin (Underground)", function(toggled)
 		task.spawn(function()
 			while autoCollectDoomCoinEnabled do
 				task.wait(0.1)
-				-- Mencari folder utama event Doom
 				local doomFolder = workspace:FindFirstChild("DoomEventParts")
 				
 				if doomFolder then
 					local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 					if hrp then
-						-- Menggunakan GetDescendants agar aman menjangkau Model (DoomCoin) didalam FOLDER 'spawn'
 						for _, item in pairs(doomFolder:GetDescendants()) do
 							if item.Name == "DoomCoin" then 
-								-- Mencari object fisik dari coin untuk di trigger
 								local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
 								if part then
 									local dist = (part.Position - hrp.Position).Magnitude
-									if dist <= 280 then -- Radius setara mekanik Valentine Coin
+									if dist <= 280 then 
 										if firetouchinterest then
 											firetouchinterest(hrp, part, 0)
 											firetouchinterest(hrp, part, 1)
@@ -1564,4 +1617,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (Auto Doom Added) Loaded")
+print("✅ Dj Hub Remastered (Bug Fixes Applied) Loaded")
