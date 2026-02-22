@@ -1,7 +1,7 @@
 --// Dj Hub (Ultimate Version - Cleaned Custom Build)
 --// Updated: zAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
 --// Added: Auto Collect DoomCoin (Underground)
---// Patched: Lucky Block 3s Check & Obby Money UI Notification Tracker
+--// Patched: wwwwwwwwwwwwLucky Block 3s Check & Obby Money UI Notification Tracker
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -995,8 +995,29 @@ task.spawn(function()
 				end
 				
 				if collectedCount > 0 then
-					local base = workspace:FindFirstChild("SpawnLocation1")
+					-- [PATCHED] Jalur baru mencari Base menyesuaikan update map terbaru
+					local base = nil
+					-- Mencari folder GameObjects (atau GameObjecrs kalau typo dari gamenya)
+					local gameFolder = workspace:FindFirstChild("GameObjects") or workspace:FindFirstChild("GameObjecrs")
+					
+					if gameFolder and gameFolder:FindFirstChild("PlaceSpecific") and gameFolder.PlaceSpecific:FindFirstChild("Root") then
+						base = gameFolder.PlaceSpecific.Root:FindFirstChild("SpawnLocation")
+					end
+					
+					-- Fallback jaga-jaga kalau jalurnya diubah lagi sama developernya
+					if not base then
+						base = workspace:FindFirstChild("SpawnLocation") or workspace:FindFirstChild("SpawnLocation1")
+					end
+					
 					if base then
+						local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
+						slideToPosition(basePos)
+					end
+					actionLock = false 
+					task.wait(1) 
+				else
+					actionLock = false
+				end
 						local basePos = Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z)
 						slideToPosition(basePos)
 					end
