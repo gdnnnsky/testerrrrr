@@ -2,7 +2,7 @@
 --// Updated: zAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
 --// Added: Auto Tower (Underground) - Max Deposits & Reward Filter
 --// Added: Auto Collect DoomCoin (Underground)
---// awwwweewBlock 3s Check & Obby Money UI Notification Tracker & Base Path Fix
+--// lettttt 3s Check & Obby Money UI Notification Tracker & Base Path Fix
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -456,7 +456,7 @@ local function slideToPosition(targetPos)
 	if not hrp then return end
 	
 	local dist = (Vector3.new(targetPos.X, 0, targetPos.Z) - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Magnitude
-	local speed = 800
+	local speed = 700
 	local time = dist / speed
 	
 	local targetY = undergroundFixedY or targetPos.Y
@@ -1041,7 +1041,7 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 	if autoTowerEnabled then
 		task.spawn(function()
 			while autoTowerEnabled do
-				task.wait(0.2)
+				task.wait(0.1)
 
 				if actionLock and not doingTower then continue end
 
@@ -1093,7 +1093,7 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 									local takeP = root:FindFirstChild("TakePrompt") or root:FindFirstChildWhichIsA("ProximityPrompt")
 									if takeP then
 										slideToPosition(Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z))
-										task.wait(0.2)
+										task.wait(0.1)
 										fireproximityprompt(takeP)
 										task.wait(1)
 										return true
@@ -1123,7 +1123,7 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 					doingTower = true
 					actionLock = true
 					slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
-					task.wait(0.2)
+					task.wait(0.1)
 					fireproximityprompt(towerPrompt)
 					task.wait(1)
 					continue
@@ -1134,7 +1134,7 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 					doingTower = true
 					actionLock = true
 					slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
-					task.wait(0.2)
+					task.wait(0.1)
 					fireproximityprompt(towerPrompt)
 					task.wait(1)
 					continue
@@ -1168,7 +1168,7 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 					if currentDeposits >= maxDeposits and currentDeposits > 0 then
 						-- 1. Tekan Complete
 						slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
-						task.wait(0.2)
+						task.wait(0.1)
 						fireproximityprompt(towerPrompt)
 						task.wait(2) -- Kasih jeda spawn reward
 
@@ -1185,9 +1185,9 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 											local tPrompt = root:FindFirstChild("TakePrompt") or root:FindFirstChildWhichIsA("ProximityPrompt")
 											if tPrompt then
 												slideToPosition(Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z))
-												task.wait(0.2)
+												task.wait(0.1)
 												fireproximityprompt(tPrompt)
-												task.wait(0.2)
+												task.wait(0.1)
 												foundTarget = true
 												break
 											end
