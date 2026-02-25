@@ -1039,7 +1039,7 @@ CreateToggle("Auto Reduce Lag+ (10m Loop)", function(toggled)
 			while autoReduceLagEnabled do
 				
 				local targetNames = {
-					"ActiveBrainrots", "ActiveTsunamis", "BaseLocations", 
+					"ActiveTsunamis", "BaseLocations", 
 					"Bases", "Leaderboards", "GeyserVisualVFX", 
 					"Misc", "SpawnMachines"
 				}
