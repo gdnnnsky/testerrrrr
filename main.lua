@@ -1,5 +1,6 @@
 --// Dj Hub (Ultimate Version - Cleaned Custom Build)
 --// Updated: zAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
+--// Added: Auto Tower (Underground) - Max Deposits & Reward Filter
 --// Added: Auto Collect DoomCoin (Underground)
 --// Patched: Lucky Block 3s Check & Obby Money UI Notification Tracker & Base Path Fix
 
@@ -126,7 +127,6 @@ MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
 local mainScale = Instance.new("UIScale", MainFrame)
-
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
 local AccentLine = Instance.new("Frame")
@@ -334,7 +334,9 @@ local activeInteractConnections = {}
 local autoConsoleEnabled = false
 
 local actionLock = false
+local doingTower = false -- [NEW] Tracker agar Auto Tower tidak crash dgn Lucky Block
 
+local autoTowerEnabled = false -- [NEW]
 local autoClaimTicketEnabled = false 
 local autoCoinValentineEnabled = false 
 local autoSellEnabled = false 
@@ -369,7 +371,6 @@ local autoReduceLagEnabled = false
 --// LOGIC FUNCTIONS
 --=============================================================================
 
--- [PATCHED]: Safe Function to fetch the new base path without breaking old mechanics
 local function getBaseLocation()
 	local gameObjects = workspace:FindFirstChild("GameObjects")
 	if gameObjects then
@@ -384,7 +385,6 @@ local function getBaseLocation()
 			end
 		end
 	end
-	-- Fallback to the old spawn location if the folder hasn't loaded properly
 	return workspace:FindFirstChild("SpawnLocation1")
 end
 
@@ -754,7 +754,7 @@ CreateToggle("Auto Sell Everything", function(toggled)
 end)
 
 --=============================================================================
---// AUTO OPEN BLOCK SECTION (DROPDOWN) - [FIXED]
+--// AUTO OPEN BLOCK SECTION (DROPDOWN)
 --=============================================================================
 
 local function CreateAutoOpenBlockDropdown()
@@ -870,8 +870,20 @@ task.spawn(function()
 end)
 
 --=============================================================================
---// LUCKY BLOCK SECTION (DROPDOWN + SLIDE MODE IMPROVED)
+--// LUCKY BLOCK SECTION
 --=============================================================================
+
+local function updateMasterSlide()
+	local anyEnabled = false
+	for _, v in pairs(slideSettings) do
+		if v then anyEnabled = true break end
+	end
+	if anyEnabled or autoClaimTicketEnabled or autoCoinValentineEnabled or autoObbyMoneyEnabled or autoCollectDoomCoinEnabled or autoTowerEnabled then
+		toggleUndergroundPlatform(true)
+	else
+		toggleUndergroundPlatform(false)
+	end
+end
 
 local function CreateLuckyBlockDropdown()
 	local DropdownBtn = Instance.new("TextButton")
@@ -914,18 +926,6 @@ local function CreateLuckyBlockDropdown()
 		end
 	end)
 
-	local function updateMasterSlide()
-		local anyEnabled = false
-		for _, v in pairs(slideSettings) do
-			if v then anyEnabled = true break end
-		end
-		if anyEnabled or autoClaimTicketEnabled or autoCoinValentineEnabled or autoObbyMoneyEnabled or autoCollectDoomCoinEnabled then
-			toggleUndergroundPlatform(true)
-		else
-			toggleUndergroundPlatform(false)
-		end
-	end
-
 	CreateToggle("Auto Divine (Slide)", function(t) slideSettings.Divine = t; updateMasterSlide() end, DropdownFrame)
 	CreateToggle("Auto Infinity (Slide)", function(t) slideSettings.Infinity = t; updateMasterSlide() end, DropdownFrame)
 	CreateToggle("Auto Celestial (Slide)", function(t) slideSettings.Celestial = t; updateMasterSlide() end, DropdownFrame)
@@ -939,7 +939,7 @@ task.spawn(function()
 	while true do
 		task.wait(0.5) 
 
-		if actionLock then continue end
+		if actionLock and not doingTower then continue end
 
 		local activeTypes = {}
 		if slideSettings.Divine then table.insert(activeTypes, "Divine") end
@@ -999,11 +999,10 @@ task.spawn(function()
 						
 						collectedCount = collectedCount + 1
 						
-						-- [PATCHED] Wait 3 seconds to check if another target block is spawned
 						if collectedCount < maxCollect then
 							task.wait(3)
 							if not getClosestBlock() then
-								break -- No block found after 3 seconds, break the loop and return to base
+								break 
 							end
 						else
 							task.wait(0.2)
@@ -1028,6 +1027,201 @@ task.spawn(function()
 		end
 	end
 end)
+
+--=============================================================================
+--// TOWER EVENT [NEW]
+--=============================================================================
+
+CreateSection("TOWER EVENT")
+
+CreateToggle("Auto Tower (Underground)", function(toggled)
+	autoTowerEnabled = toggled
+	updateMasterSlide()
+
+	if autoTowerEnabled then
+		task.spawn(function()
+			while autoTowerEnabled do
+				task.wait(0.5)
+
+				if actionLock and not doingTower then continue end
+
+				local towerMain = workspace:FindFirstChild("GameObjects")
+					and workspace.GameObjects:FindFirstChild("PlaceSpecific")
+					and workspace.GameObjects.PlaceSpecific:FindFirstChild("root")
+					and workspace.GameObjects.PlaceSpecific.root:FindFirstChild("Tower")
+					and workspace.GameObjects.PlaceSpecific.root.Tower:FindFirstChild("Main")
+
+				if not towerMain then continue end
+
+				local promptAttachment = towerMain:FindFirstChild("Prompt")
+				local towerPrompt = promptAttachment and promptAttachment:FindFirstChildOfClass("ProximityPrompt")
+
+				local billboardInfo = towerMain:FindFirstChild("Billboard")
+					and towerMain.Billboard:FindFirstChild("BillboardGui")
+					and towerMain.Billboard.BillboardGui:FindFirstChild("Frame")
+					and towerMain.Billboard.BillboardGui.Frame:FindFirstChild("Info")
+					and towerMain.Billboard.BillboardGui.Frame.Info:FindFirstChild("InfoText")
+
+				local playerGui = lp:FindFirstChild("PlayerGui")
+				local trialHud = playerGui and playerGui:FindFirstChild("TowerTrialHUD")
+				local depositsLabel = trialHud and trialHud:FindFirstChild("TrialBar") and trialHud.TrialBar:FindFirstChild("Deposits")
+				local reqLabel = trialHud and trialHud:FindFirstChild("TrialBar") and trialHud.TrialBar:FindFirstChild("Requirement")
+
+				if not towerPrompt or not billboardInfo then continue end
+
+				local infoText = billboardInfo.ContentText or billboardInfo.Text
+				local actionText = towerPrompt.ActionText
+
+				-- Fungsi Pembantu Ambil Brainrot 
+				local function grabRequiredBrainrot()
+					if not reqLabel then return false end
+					local reqText = reqLabel.ContentText or reqLabel.Text
+					
+					local rarity = string.match(reqText, "Tower Trial:%s*(%a+)")
+					if not rarity then 
+						local split = string.split(reqText, ": ")
+						if split[2] then rarity = split[2] end
+					end
+
+					if rarity then
+						local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
+						local rarityFolder = activeFolder and activeFolder:FindFirstChild(rarity)
+						if rarityFolder then
+							for _, model in pairs(rarityFolder:GetChildren()) do
+								if model.Name == "RenderedBrainrot" and model:FindFirstChild("Root") then
+									local root = model.Root
+									local takeP = root:FindFirstChild("TakePrompt") or root:FindFirstChildWhichIsA("ProximityPrompt")
+									if takeP then
+										slideToPosition(Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z))
+										task.wait(0.5)
+										fireproximityprompt(takeP)
+										task.wait(1)
+										return true
+									end
+								end
+							end
+						end
+					end
+					return false
+				end
+
+				-- State 1: Cooldown Deteksi
+				if string.find(infoText, "Not yet worthy") then
+					if doingTower then
+						local base = getBaseLocation()
+						if base then
+							slideToPosition(Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z))
+						end
+						doingTower = false
+						actionLock = false
+					end
+					continue
+				end
+
+				-- State 2: Start Trial
+				if string.find(actionText, "Start Trial") then
+					doingTower = true
+					actionLock = true
+					slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
+					task.wait(0.5)
+					fireproximityprompt(towerPrompt)
+					task.wait(1)
+					continue
+				end
+
+				-- State 3: Submit (Player sudah pegang brainrot dan perlu kirim ke Tower)
+				if string.find(actionText, "Submit") then
+					doingTower = true
+					actionLock = true
+					slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
+					task.wait(0.5)
+					fireproximityprompt(towerPrompt)
+					task.wait(1)
+					continue
+				end
+
+				-- State 4: Need Brainrot (Player harus jalan ke ActiveBrainrot)
+				if string.find(actionText, "Need:") then
+					doingTower = true
+					actionLock = true
+					grabRequiredBrainrot()
+					continue
+				end
+
+				-- State 5: Complete Trial (Harus di push sampai limit misal 12/12)
+				if string.find(actionText, "Complete Trial") then
+					doingTower = true
+					actionLock = true
+					
+					local currentDeposits = 0
+					local maxDeposits = 12
+					if depositsLabel then
+						local depText = depositsLabel.ContentText or depositsLabel.Text
+						local c, m = string.match(depText, "(%d+)/(%d+)")
+						if c and m then
+							currentDeposits = tonumber(c)
+							maxDeposits = tonumber(m)
+						end
+					end
+
+					-- Jika Full (e.g 12/12) baru kita eksekusi trigger-nya.
+					if currentDeposits >= maxDeposits and currentDeposits > 0 then
+						-- 1. Tekan Complete
+						slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
+						task.wait(0.5)
+						fireproximityprompt(towerPrompt)
+						task.wait(2) -- Kasih jeda spawn reward
+
+						-- 2. Hunt Reward (Divine / Infinity Only)
+						local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
+						if activeFolder then
+							local foundTarget = false
+							for _, rName in pairs({"Divine", "Infinity"}) do
+								local rFolder = activeFolder:FindFirstChild(rName)
+								if rFolder then
+									for _, model in pairs(rFolder:GetChildren()) do
+										if model.Name == "RenderedBrainrot" and model:FindFirstChild("Root") then
+											local root = model.Root
+											local tPrompt = root:FindFirstChild("TakePrompt") or root:FindFirstChildWhichIsA("ProximityPrompt")
+											if tPrompt then
+												slideToPosition(Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z))
+												task.wait(0.5)
+												fireproximityprompt(tPrompt)
+												task.wait(0.5)
+												foundTarget = true
+												break
+											end
+										end
+									end
+								end
+								if foundTarget then break end
+							end
+						end
+
+						-- 3. Balik Base & Lepas Lock
+						local base = getBaseLocation()
+						if base then
+							slideToPosition(Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z))
+						end
+						doingTower = false
+						actionLock = false
+					else
+						-- Prompt Complete tapi belum 12/12? Paksa ambil lagi untuk memaksimalkan point.
+						local grabbed = grabRequiredBrainrot()
+						if not grabbed then
+							task.wait(1) -- Tunggu spawn jika belum muncul di map
+						end
+					end
+					continue
+				end
+			end
+		end)
+	end
+end)
+
+--=============================================================================
+--// OPTIMIZATION
+--=============================================================================
 
 CreateSection("OPTIMIZATION")
 
@@ -1129,6 +1323,10 @@ CreateSection("VISUALS (ESP)")
 
 CreateToggle("ESP Divine", function() toggleEspLogic("Divine", "Divine") end)
 
+--=============================================================================
+--// ARCADE EVENT
+--=============================================================================
+
 CreateSection("ARCADE EVENT")
 
 CreateToggle("Auto Game Console", function(toggled)
@@ -1161,22 +1359,14 @@ end)
 
 CreateToggle("Auto Claim Ticket (Underground)", function(toggled)
 	autoClaimTicketEnabled = toggled
-	if toggled then 
-		toggleUndergroundPlatform(true) 
-	else
-		local anyLuckyBlockOn = false
-		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
-		if not anyLuckyBlockOn and not autoCoinValentineEnabled and not autoObbyMoneyEnabled and not autoCollectDoomCoinEnabled then
-			toggleUndergroundPlatform(false)
-		end
-	end
+	updateMasterSlide()
 	
 	if autoClaimTicketEnabled then
 		task.spawn(function()
 			while autoClaimTicketEnabled do
 				task.wait(0.2) 
 				
-				if actionLock then continue end
+				if actionLock and not doingTower then continue end
 				
 				if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 					local collectedCount = 0
@@ -1265,16 +1455,7 @@ CreateSection("VALENTINE EVENT")
 
 CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 	autoCoinValentineEnabled = toggled
-	
-	if toggled then 
-		toggleUndergroundPlatform(true) 
-	else
-		local anyLuckyBlockOn = false
-		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
-		if not anyLuckyBlockOn and not autoClaimTicketEnabled and not autoObbyMoneyEnabled and not autoCollectDoomCoinEnabled then
-			toggleUndergroundPlatform(false)
-		end
-	end
+	updateMasterSlide()
 
 	task.spawn(function()
 		while autoCoinValentineEnabled do
@@ -1309,7 +1490,7 @@ CreateToggle("Auto Coin Valentine (Underground)", function(toggled)
 		while autoCoinValentineEnabled do
 			task.wait(0.2)
 			
-			if actionLock then continue end
+			if actionLock and not doingTower then continue end
 
 			local coinFolder = workspace:FindFirstChild("ValentinesCoinParts")
 			local isEventActive = false
@@ -1366,26 +1547,16 @@ CreateSection("MONEY EVENT")
 
 CreateToggle("Auto Obby Money (Underground)", function(toggled)
 	autoObbyMoneyEnabled = toggled
-	
-	if toggled then 
-		toggleUndergroundPlatform(true) 
-	else
-		local anyLuckyBlockOn = false
-		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
-		if not anyLuckyBlockOn and not autoClaimTicketEnabled and not autoCoinValentineEnabled and not autoCollectDoomCoinEnabled then
-			toggleUndergroundPlatform(false)
-		end
-	end
+	updateMasterSlide()
 
 	if autoObbyMoneyEnabled then
-		-- [PATCHED] Membuat penyimpanan UI Tracking di luar loop agar tidak bolak-balik
 		local obbyState = { o1 = false, o2 = false, o3 = false }
 		
 		task.spawn(function()
 			while autoObbyMoneyEnabled do
 				task.wait(1)
 				
-				if actionLock then continue end
+				if actionLock and not doingTower then continue end
 
 				local end1, end2, end3
 				for _, v in pairs(workspace:GetDescendants()) do
@@ -1397,14 +1568,12 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 					end
 				end
 				
-				-- Jika obby event hilang sama sekali, reset state 
 				if not end1 and not end2 and not end3 then
 					obbyState.o1 = false
 					obbyState.o2 = false
 					obbyState.o3 = false
 				end
 
-				-- Fungsi Pengecek Notifikasi UI
 				local function checkUIForObby()
 					local pg = lp:FindFirstChild("PlayerGui")
 					if pg then
@@ -1421,11 +1590,10 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 					end
 				end
 
-				checkUIForObby() -- Cek notifikasi sebelum bergerak
+				checkUIForObby() 
 
 				if end1 and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
 					
-					-- Apabila ketiga Obby sudah selesai, skip dan tetap stay di base
 					if obbyState.o1 and obbyState.o2 and obbyState.o3 then
 						continue
 					end
@@ -1487,7 +1655,6 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 
 					checkUIForObby()
 
-					-- Evaluasi apakah ketiga-tiganya udah tamat
 					if obbyState.o1 and obbyState.o2 and obbyState.o3 then
 						local base = getBaseLocation()
 						if base then
@@ -1495,7 +1662,7 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 							slideToPosition(basePos)
 						end
 						actionLock = false
-						task.wait(10) -- Standby lama saat obby sudah tamat total
+						task.wait(10)
 					else
 						actionLock = false
 						task.wait(2) 
@@ -1507,23 +1674,14 @@ CreateToggle("Auto Obby Money (Underground)", function(toggled)
 end)
 
 --=============================================================================
---// DOOM EVENT [NEW FEATURE]
+--// DOOM EVENT
 --=============================================================================
 
 CreateSection("DOOM EVENT")
 
 CreateToggle("Auto Collect DoomCoin (Underground)", function(toggled)
 	autoCollectDoomCoinEnabled = toggled
-	
-	if toggled then 
-		toggleUndergroundPlatform(true) 
-	else
-		local anyLuckyBlockOn = false
-		for _, v in pairs(slideSettings) do if v then anyLuckyBlockOn = true break end end
-		if not anyLuckyBlockOn and not autoClaimTicketEnabled and not autoCoinValentineEnabled and not autoObbyMoneyEnabled then
-			toggleUndergroundPlatform(false)
-		end
-	end
+	updateMasterSlide()
 
 	if autoCollectDoomCoinEnabled then
 		task.spawn(function()
@@ -1636,4 +1794,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (Bug Fixes Applied) Loaded")
+print("✅ Dj Hub Remastered (Tower Event Added) Loaded")
