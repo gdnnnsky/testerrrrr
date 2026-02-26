@@ -1,5 +1,5 @@
 --// Dj Hub (Ulsfaaadsatimate Version - Cleaned Custom Build)
---// Updated: zAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
+--// dsaaaaaaaaUpdated: zAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
 --// Patched: Auto Tower Perfect Sync (Death Reset & True UI State Tracking)
 --// Added: Auto Collect DoomCoin (Underground)
 
@@ -1132,7 +1132,7 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 					-- [FIX 2]: BERHENTI/TUNGGU DI TOWER sampai teks Requirement beneran berubah
 					local waitOut = 0
 					while waitOut < 50 do
-						task.wait(2)
+						task.wait(4)
 						local newUIState = (reqLabel and (reqLabel.ContentText or reqLabel.Text) or "") .. "_" .. (depositsLabel and (depositsLabel.ContentText or depositsLabel.Text) or "")
 						
 						-- Kalau teks UI udah beda dan prompt bukan Submit lagi, baru lolos
