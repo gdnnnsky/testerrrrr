@@ -1,8 +1,7 @@
 --// Dj Hub (Ultimate Version - Cleaned Custom Build)
 --// Updated: zAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
---// Added: Auto Tower (Underground) - Max Deposits & Reward Filter
+--// Patched: Auto Tower UI State Tracker (Stop & Wait for Requirement Update)
 --// Added: Auto Collect DoomCoin (Underground)
---// lettttt 3s Check & Obby Money UI Notification Tracker & Base Path Fix
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -59,7 +58,6 @@ ScreenGui.Name = "DjHubRemastered"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parent
 
--- [FIX GUI] Auto Scale Logic
 local uiScale = Instance.new("UIScale")
 uiScale.Parent = ScreenGui
 
@@ -334,9 +332,9 @@ local activeInteractConnections = {}
 local autoConsoleEnabled = false
 
 local actionLock = false
-local doingTower = false -- [NEW] Tracker agar Auto Tower tidak crash dgn Lucky Block
+local doingTower = false 
 
-local autoTowerEnabled = false -- [NEW]
+local autoTowerEnabled = false 
 local autoClaimTicketEnabled = false 
 local autoCoinValentineEnabled = false 
 local autoSellEnabled = false 
@@ -456,7 +454,7 @@ local function slideToPosition(targetPos)
 	if not hrp then return end
 	
 	local dist = (Vector3.new(targetPos.X, 0, targetPos.Z) - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Magnitude
-	local speed = 700
+	local speed = 650
 	local time = dist / speed
 	
 	local targetY = undergroundFixedY or targetPos.Y
@@ -754,7 +752,7 @@ CreateToggle("Auto Sell Everything", function(toggled)
 end)
 
 --=============================================================================
---// AUTO OPEN BLOCK SECTION (DROPDOWN)
+--// AUTO OPEN BLOCK SECTION
 --=============================================================================
 
 local function CreateAutoOpenBlockDropdown()
@@ -1029,7 +1027,7 @@ task.spawn(function()
 end)
 
 --=============================================================================
---// TOWER EVENT [NEW]
+--// TOWER EVENT (PERBAIKAN TRACK UI)
 --=============================================================================
 
 CreateSection("TOWER EVENT")
@@ -1037,6 +1035,9 @@ CreateSection("TOWER EVENT")
 CreateToggle("Auto Tower (Underground)", function(toggled)
 	autoTowerEnabled = toggled
 	updateMasterSlide()
+
+	local lastSubmitState = ""
+	local waitingForNewReq = false
 
 	if autoTowerEnabled then
 		task.spawn(function()
@@ -1071,12 +1072,13 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 
 				local infoText = billboardInfo.ContentText or billboardInfo.Text
 				local actionText = towerPrompt.ActionText
+				
+				-- Menyimpan state dari UI (Requirement & Total Deposit saat ini)
+				local reqText = reqLabel and (reqLabel.ContentText or reqLabel.Text) or ""
+				local depText = depositsLabel and (depositsLabel.ContentText or depositsLabel.Text) or ""
+				local currentUIState = reqText .. "_" .. depText
 
-				-- Fungsi Pembantu Ambil Brainrot 
 				local function grabRequiredBrainrot()
-					if not reqLabel then return false end
-					local reqText = reqLabel.ContentText or reqLabel.Text
-					
 					local rarity = string.match(reqText, "Tower Trial:%s*(%a+)")
 					if not rarity then 
 						local split = string.split(reqText, ": ")
@@ -1114,6 +1116,7 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 						end
 						doingTower = false
 						actionLock = false
+						waitingForNewReq = false
 					end
 					continue
 				end
@@ -1122,6 +1125,7 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 				if string.find(actionText, "Start Trial") then
 					doingTower = true
 					actionLock = true
+					waitingForNewReq = false
 					slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
 					task.wait(0.1)
 					fireproximityprompt(towerPrompt)
@@ -1129,13 +1133,18 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 					continue
 				end
 
-				-- State 3: Submit (Player sudah pegang brainrot dan perlu kirim ke Tower)
+				-- State 3: Submit (Player sudah pegang brainrot dan submit ke Tower)
 				if string.find(actionText, "Submit") then
 					doingTower = true
 					actionLock = true
 					slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
 					task.wait(0.1)
 					fireproximityprompt(towerPrompt)
+					
+					-- [PERBAIKAN]: Memorize status UI saat disubmit, lalu standby
+					lastSubmitState = currentUIState
+					waitingForNewReq = true
+					
 					task.wait(1)
 					continue
 				end
@@ -1144,19 +1153,34 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 				if string.find(actionText, "Need:") then
 					doingTower = true
 					actionLock = true
-					grabRequiredBrainrot()
+					
+					-- [PERBAIKAN]: Berhenti dan tunggu di Tower sampai Teks Requirement berubah!
+					if waitingForNewReq then
+						if currentUIState == lastSubmitState then
+							-- Masih text / deposit lama -> Standby diam tunggu update
+							continue 
+						else
+							-- Requirement UI sudah Update! -> Lepas mode standby
+							waitingForNewReq = false
+						end
+					end
+					
+					local grabbed = grabRequiredBrainrot()
+					if not grabbed then
+						task.wait(1) -- Tunggu bentar barangkali brainrot belum ngerender di map
+					end
 					continue
 				end
 
-				-- State 5: Complete Trial (Harus di push sampai limit misal 12/12)
+				-- State 5: Complete Trial (Max deposits)
 				if string.find(actionText, "Complete Trial") then
 					doingTower = true
 					actionLock = true
+					waitingForNewReq = false
 					
 					local currentDeposits = 0
 					local maxDeposits = 12
 					if depositsLabel then
-						local depText = depositsLabel.ContentText or depositsLabel.Text
 						local c, m = string.match(depText, "(%d+)/(%d+)")
 						if c and m then
 							currentDeposits = tonumber(c)
@@ -1164,13 +1188,12 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 						end
 					end
 
-					-- Jika Full (e.g 12/12) baru kita eksekusi trigger-nya.
 					if currentDeposits >= maxDeposits and currentDeposits > 0 then
 						-- 1. Tekan Complete
 						slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
 						task.wait(0.1)
 						fireproximityprompt(towerPrompt)
-						task.wait(2) -- Kasih jeda spawn reward
+						task.wait(1)
 
 						-- 2. Hunt Reward (Divine / Infinity Only)
 						local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
@@ -1198,7 +1221,7 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 							end
 						end
 
-						-- 3. Balik Base & Lepas Lock
+						-- 3. Balik Base
 						local base = getBaseLocation()
 						if base then
 							slideToPosition(Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z))
@@ -1206,11 +1229,9 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 						doingTower = false
 						actionLock = false
 					else
-						-- Prompt Complete tapi belum 12/12? Paksa ambil lagi untuk memaksimalkan point.
+						-- Prompt Complete tapi belum 12/12? Paksa ambil lagi 
 						local grabbed = grabRequiredBrainrot()
-						if not grabbed then
-							task.wait(1) -- Tunggu spawn jika belum muncul di map
-						end
+						if not grabbed then task.wait(1) end
 					end
 					continue
 				end
@@ -1794,4 +1815,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (Tower Event Added) Loaded")
+print("✅ Dj Hub Remastered (Tower UI Tracking Fix) Loaded")
