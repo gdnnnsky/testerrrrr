@@ -1,6 +1,6 @@
 --// Dj Hub (Ultimate Version - Cleaned Custom Build)
 --// Updated: zAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
---// Patched: Auto Tower UI State Tracker (Stop & Wait for Requirement Update)
+--// Patched: Auto Tower Perfect Sync (Death Reset & True UI State Tracking)
 --// Added: Auto Collect DoomCoin (Underground)
 
 local Players = game:GetService("Players")
@@ -454,7 +454,7 @@ local function slideToPosition(targetPos)
 	if not hrp then return end
 	
 	local dist = (Vector3.new(targetPos.X, 0, targetPos.Z) - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Magnitude
-	local speed = 650
+	local speed = 600
 	local time = dist / speed
 	
 	local targetY = undergroundFixedY or targetPos.Y
@@ -1027,7 +1027,7 @@ task.spawn(function()
 end)
 
 --=============================================================================
---// TOWER EVENT (PERBAIKAN TRACK UI)
+--// TOWER EVENT (PERFECT SYNC PATCH)
 --=============================================================================
 
 CreateSection("TOWER EVENT")
@@ -1036,13 +1036,30 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 	autoTowerEnabled = toggled
 	updateMasterSlide()
 
-	local lastSubmitState = ""
-	local waitingForNewReq = false
-
 	if autoTowerEnabled then
 		task.spawn(function()
 			while autoTowerEnabled do
-				task.wait(0.1)
+				task.wait(0.5)
+
+				-- [FIX 1]: RESET KALAU MATI / RESPAWN
+				if not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then
+					if doingTower then
+						doingTower = false
+						actionLock = false
+					end
+					task.wait(1)
+					continue
+				end
+
+				local hum = lp.Character:FindFirstChild("Humanoid")
+				if hum and hum.Health <= 0 then
+					if doingTower then
+						doingTower = false
+						actionLock = false
+					end
+					task.wait(1)
+					continue
+				end
 
 				if actionLock and not doingTower then continue end
 
@@ -1071,41 +1088,10 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 				if not towerPrompt or not billboardInfo then continue end
 
 				local infoText = billboardInfo.ContentText or billboardInfo.Text
-				local actionText = towerPrompt.ActionText
+				local currentActionText = towerPrompt.ActionText
 				
-				-- Menyimpan state dari UI (Requirement & Total Deposit saat ini)
 				local reqText = reqLabel and (reqLabel.ContentText or reqLabel.Text) or ""
 				local depText = depositsLabel and (depositsLabel.ContentText or depositsLabel.Text) or ""
-				local currentUIState = reqText .. "_" .. depText
-
-				local function grabRequiredBrainrot()
-					local rarity = string.match(reqText, "Tower Trial:%s*(%a+)")
-					if not rarity then 
-						local split = string.split(reqText, ": ")
-						if split[2] then rarity = split[2] end
-					end
-
-					if rarity then
-						local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
-						local rarityFolder = activeFolder and activeFolder:FindFirstChild(rarity)
-						if rarityFolder then
-							for _, model in pairs(rarityFolder:GetChildren()) do
-								if model.Name == "RenderedBrainrot" and model:FindFirstChild("Root") then
-									local root = model.Root
-									local takeP = root:FindFirstChild("TakePrompt") or root:FindFirstChildWhichIsA("ProximityPrompt")
-									if takeP then
-										slideToPosition(Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z))
-										task.wait(0.1)
-										fireproximityprompt(takeP)
-										task.wait(1)
-										return true
-									end
-								end
-							end
-						end
-					end
-					return false
-				end
 
 				-- State 1: Cooldown Deteksi
 				if string.find(infoText, "Not yet worthy") then
@@ -1116,68 +1102,53 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 						end
 						doingTower = false
 						actionLock = false
-						waitingForNewReq = false
 					end
 					continue
 				end
 
 				-- State 2: Start Trial
-				if string.find(actionText, "Start Trial") then
+				if string.find(currentActionText, "Start Trial") then
 					doingTower = true
 					actionLock = true
-					waitingForNewReq = false
 					slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
-					task.wait(0.1)
+					task.wait(0.5)
 					fireproximityprompt(towerPrompt)
 					task.wait(1)
 					continue
 				end
 
-				-- State 3: Submit (Player sudah pegang brainrot dan submit ke Tower)
-				if string.find(actionText, "Submit") then
+				-- State 3: Submit (Player udah dapet brainrot dan kasih ke Tower)
+				if string.find(currentActionText, "Submit") then
 					doingTower = true
 					actionLock = true
 					slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
-					task.wait(0.1)
+					task.wait(0.5)
+					
+					-- Simpan status teks UI persis sebelum pencet submit
+					local prevUIState = (reqLabel and (reqLabel.ContentText or reqLabel.Text) or "") .. "_" .. (depositsLabel and (depositsLabel.ContentText or depositsLabel.Text) or "")
+					
 					fireproximityprompt(towerPrompt)
 					
-					-- [PERBAIKAN]: Memorize status UI saat disubmit, lalu standby
-					lastSubmitState = currentUIState
-					waitingForNewReq = true
-					
-					task.wait(1)
-					continue
-				end
-
-				-- State 4: Need Brainrot (Player harus jalan ke ActiveBrainrot)
-				if string.find(actionText, "Need:") then
-					doingTower = true
-					actionLock = true
-					
-					-- [PERBAIKAN]: Berhenti dan tunggu di Tower sampai Teks Requirement berubah!
-					if waitingForNewReq then
-						if currentUIState == lastSubmitState then
-							-- Masih text / deposit lama -> Standby diam tunggu update
-							continue 
-						else
-							-- Requirement UI sudah Update! -> Lepas mode standby
-							waitingForNewReq = false
+					-- [FIX 2]: BERHENTI/TUNGGU DI TOWER sampai teks Requirement beneran berubah
+					local waitOut = 0
+					while waitOut < 50 do
+						task.wait(0.1)
+						local newUIState = (reqLabel and (reqLabel.ContentText or reqLabel.Text) or "") .. "_" .. (depositsLabel and (depositsLabel.ContentText or depositsLabel.Text) or "")
+						
+						-- Kalau teks UI udah beda dan prompt bukan Submit lagi, baru lolos
+						if newUIState ~= prevUIState and not string.find(towerPrompt.ActionText, "Submit") then
+							break 
 						end
+						waitOut = waitOut + 1
 					end
 					
-					local grabbed = grabRequiredBrainrot()
-					if not grabbed then
-						task.wait(1) -- Tunggu bentar barangkali brainrot belum ngerender di map
-					end
+					task.wait(0.5) 
 					continue
 				end
 
-				-- State 5: Complete Trial (Max deposits)
-				if string.find(actionText, "Complete Trial") then
-					doingTower = true
-					actionLock = true
-					waitingForNewReq = false
-					
+				-- State 4: Complete Trial
+				local isCompleteMaxed = false
+				if string.find(currentActionText, "Complete Trial") then
 					local currentDeposits = 0
 					local maxDeposits = 12
 					if depositsLabel then
@@ -1189,13 +1160,17 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 					end
 
 					if currentDeposits >= maxDeposits and currentDeposits > 0 then
-						-- 1. Tekan Complete
+						isCompleteMaxed = true
+						doingTower = true
+						actionLock = true
+						
+						-- Tekan Complete
 						slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
-						task.wait(0.1)
+						task.wait(0.5)
 						fireproximityprompt(towerPrompt)
-						task.wait(1)
+						task.wait(2)
 
-						-- 2. Hunt Reward (Divine / Infinity Only)
+						-- Hunt Reward
 						local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
 						if activeFolder then
 							local foundTarget = false
@@ -1208,9 +1183,9 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 											local tPrompt = root:FindFirstChild("TakePrompt") or root:FindFirstChildWhichIsA("ProximityPrompt")
 											if tPrompt then
 												slideToPosition(Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z))
-												task.wait(0.1)
+												task.wait(0.5)
 												fireproximityprompt(tPrompt)
-												task.wait(0.1)
+												task.wait(0.5)
 												foundTarget = true
 												break
 											end
@@ -1221,17 +1196,62 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 							end
 						end
 
-						-- 3. Balik Base
+						-- Balik Base
 						local base = getBaseLocation()
 						if base then
 							slideToPosition(Vector3.new(base.Position.X, base.Position.Y - 10, base.Position.Z))
 						end
 						doingTower = false
 						actionLock = false
-					else
-						-- Prompt Complete tapi belum 12/12? Paksa ambil lagi 
-						local grabbed = grabRequiredBrainrot()
-						if not grabbed then task.wait(1) end
+						continue
+					end
+				end
+
+				-- State 5: Need Brainrot (atau Complete Trial tapi baru misal 5/12 jadi paksa ambil lagi)
+				if string.find(currentActionText, "Need:") or (string.find(currentActionText, "Complete Trial") and not isCompleteMaxed) then
+					doingTower = true
+					actionLock = true
+					
+					-- Ekstrak misi terbarunya
+					local rarity = string.match(reqText, "Tower Trial:%s*(%a+)")
+					if not rarity then 
+						local split = string.split(reqText, ": ")
+						if split[2] then rarity = split[2] end
+					end
+
+					if rarity then
+						local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
+						local rarityFolder = activeFolder and activeFolder:FindFirstChild(rarity)
+						
+						if rarityFolder then
+							local foundTarget = false
+							for _, model in pairs(rarityFolder:GetChildren()) do
+								if model.Name == "RenderedBrainrot" and model:FindFirstChild("Root") then
+									local root = model.Root
+									local takeP = root:FindFirstChild("TakePrompt") or root:FindFirstChildWhichIsA("ProximityPrompt")
+									if takeP then
+										-- Slide ke brainrot target
+										slideToPosition(Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z))
+										task.wait(0.2)
+										fireproximityprompt(takeP)
+										
+										-- [FIX 3]: JANGAN lanjut loop sebelum Tower ngedeteksi kita udah megang
+										local waitOut = 0
+										while waitOut < 50 do
+											task.wait(0.1)
+											if towerPrompt and towerPrompt.Parent and string.find(towerPrompt.ActionText, "Submit") then
+												break
+											end
+											waitOut = waitOut + 1
+										end
+										
+										foundTarget = true
+										break
+									end
+								end
+							end
+							if not foundTarget then task.wait(1) end
+						end
 					end
 					continue
 				end
