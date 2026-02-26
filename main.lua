@@ -1,6 +1,6 @@
---// Dj Hub (Ulsfaaadsatimate Version - Cleaned Custom Build)
---// dsaaaaaaaaUpdated: zAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
---// Patched: Auto Tower Perfect Sync (Death Reset & True UI State Tracking)
+--// Dj Hub (Ultimate Version - Cleaned Custom Build)
+--// Updated: zAuto Reduce Lag+ (10m Loop) with exact Workspace & Lighting structure clean.
+--// Patched: Auto Tower Perfect Sync (Strict UI Requirement Tracker & Longest Cooldown Scanner)
 --// Added: Auto Collect DoomCoin (Underground)
 
 local Players = game:GetService("Players")
@@ -1027,7 +1027,7 @@ task.spawn(function()
 end)
 
 --=============================================================================
---// TOWER EVENT (PERFECT SYNC PATCH)
+--// TOWER EVENT (PERFECT SYNC & COOLDOWN SCANNER PATCH)
 --=============================================================================
 
 CreateSection("TOWER EVENT")
@@ -1039,9 +1039,9 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 	if autoTowerEnabled then
 		task.spawn(function()
 			while autoTowerEnabled do
-				task.wait(0.5)
+				task.wait(0.1)
 
-				-- [FIX 1]: RESET KALAU MATI / RESPAWN
+				-- RESET KALAU MATI / RESPAWN
 				if not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then
 					if doingTower then
 						doingTower = false
@@ -1111,9 +1111,9 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 					doingTower = true
 					actionLock = true
 					slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
-					task.wait(0.5)
+					task.wait(0.2)
 					fireproximityprompt(towerPrompt)
-					task.wait(1)
+					task.wait(0.5)
 					continue
 				end
 
@@ -1122,27 +1122,29 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 					doingTower = true
 					actionLock = true
 					slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
-					task.wait(0.5)
+					task.wait(0.2)
 					
-					-- Simpan status teks UI persis sebelum pencet submit
-					local prevUIState = (reqLabel and (reqLabel.ContentText or reqLabel.Text) or "") .. "_" .. (depositsLabel and (depositsLabel.ContentText or depositsLabel.Text) or "")
+					-- Simpan status teks UI Requirement SEBELUM mencet submit
+					local preSubmitReq = reqLabel and (reqLabel.ContentText or reqLabel.Text) or ""
 					
 					fireproximityprompt(towerPrompt)
 					
-					-- [FIX 2]: BERHENTI/TUNGGU DI TOWER sampai teks Requirement beneran berubah
-					local waitOut = 0
-					while waitOut < 50 do
-						task.wait(4)
-						local newUIState = (reqLabel and (reqLabel.ContentText or reqLabel.Text) or "") .. "_" .. (depositsLabel and (depositsLabel.ContentText or depositsLabel.Text) or "")
+					-- [PERBAIKAN TOTAL]: Jangan pakai task.wait statis. Bikin script nge-freeze TUNGGU teks Requirement beneran berubah!
+					while autoTowerEnabled and doingTower do
+						task.wait(0.1)
+						local currentReq = reqLabel and (reqLabel.ContentText or reqLabel.Text) or ""
+						local checkAction = towerPrompt and towerPrompt.ActionText or ""
 						
-						-- Kalau teks UI udah beda dan prompt bukan Submit lagi, baru lolos
-						if newUIState ~= prevUIState and not string.find(towerPrompt.ActionText, "Submit") then
+						-- Kalau teks Requirement udah beda dari pas kita Submit, BERARTI MISI BARU MUNCUL -> Lepas freeze!
+						if currentReq ~= preSubmitReq then
 							break 
 						end
-						waitOut = waitOut + 1
+						
+						-- Safety: Kalau ternyata tiba-tiba promptnya minta "Complete Trial" lepas freeze juga
+						if string.find(checkAction, "Complete Trial") then
+							break
+						end
 					end
-					
-					task.wait(0.5) 
 					continue
 				end
 
@@ -1166,11 +1168,11 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 						
 						-- Tekan Complete
 						slideToPosition(Vector3.new(towerMain.Position.X, towerMain.Position.Y - 10, towerMain.Position.Z))
-						task.wait(0.5)
+						task.wait(0.2)
 						fireproximityprompt(towerPrompt)
-						task.wait(2)
+						task.wait(1.5)
 
-						-- Hunt Reward
+						-- Hunt Reward (Cari Divine/Infinity)
 						local activeFolder = workspace:FindFirstChild("ActiveBrainrots")
 						if activeFolder then
 							local foundTarget = false
@@ -1183,7 +1185,7 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 											local tPrompt = root:FindFirstChild("TakePrompt") or root:FindFirstChildWhichIsA("ProximityPrompt")
 											if tPrompt then
 												slideToPosition(Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z))
-												task.wait(0.5)
+												task.wait(0.2)
 												fireproximityprompt(tPrompt)
 												task.wait(0.5)
 												foundTarget = true
@@ -1224,33 +1226,52 @@ CreateToggle("Auto Tower (Underground)", function(toggled)
 						local rarityFolder = activeFolder and activeFolder:FindFirstChild(rarity)
 						
 						if rarityFolder then
-							local foundTarget = false
+							local bestRoot = nil
+							local bestPrompt = nil
+							local maxTimeLeft = -1 -- [FITUR BARU]: Variabel untuk mencari waktu terlama
+							
+							-- Scanner nyari brainrot di rarity tsb
 							for _, model in pairs(rarityFolder:GetChildren()) do
 								if model.Name == "RenderedBrainrot" and model:FindFirstChild("Root") then
 									local root = model.Root
 									local takeP = root:FindFirstChild("TakePrompt") or root:FindFirstChildWhichIsA("ProximityPrompt")
-									if takeP then
-										-- Slide ke brainrot target
-										slideToPosition(Vector3.new(root.Position.X, root.Position.Y - 10, root.Position.Z))
-										task.wait(0.2)
-										fireproximityprompt(takeP)
+									
+									-- Navigasi mencari text waktunya
+									local timerGui = root:FindFirstChild("TimerGui")
+									local timeLeftFrame = timerGui and timerGui:FindFirstChild("TimeLeft")
+									local timeLeftText = timeLeftFrame and timeLeftFrame:FindFirstChild("TimeLeft")
+									
+									if takeP and timeLeftText then
+										local tText = timeLeftText.Text
+										-- Ekstrak angkanya doang, misal "30s" jadi 30
+										local tVal = tonumber(string.match(tText, "%d+")) or 0
 										
-										-- [FIX 3]: JANGAN lanjut loop sebelum Tower ngedeteksi kita udah megang
-										local waitOut = 0
-										while waitOut < 50 do
-											task.wait(0.1)
-											if towerPrompt and towerPrompt.Parent and string.find(towerPrompt.ActionText, "Submit") then
-												break
-											end
-											waitOut = waitOut + 1
+										-- Cek apa waktu ini lebih besar/lama dari yang udah ketemu sebelumnya
+										if tVal > maxTimeLeft then
+											maxTimeLeft = tVal
+											bestRoot = root
+											bestPrompt = takeP
 										end
-										
-										foundTarget = true
-										break
 									end
 								end
 							end
-							if not foundTarget then task.wait(1) end
+							
+							if bestRoot and bestPrompt then
+								-- Slide ke brainrot target dengan waktu terlama
+								slideToPosition(Vector3.new(bestRoot.Position.X, bestRoot.Position.Y - 10, bestRoot.Position.Z))
+								task.wait(0.1)
+								fireproximityprompt(bestPrompt)
+								
+								-- Freeze sampai prompt tower beneran ganti minta Submit
+								while autoTowerEnabled and doingTower do
+									task.wait(0.1)
+									if towerPrompt and towerPrompt.Parent and string.find(towerPrompt.ActionText, "Submit") then
+										break
+									end
+								end
+							else
+								task.wait(0.5) -- Belum ada spawn, tunggu sebentar
+							end
 						end
 					end
 					continue
@@ -1835,4 +1856,4 @@ CreateToggle("Unlimited Zoom + Camera Clip", function(toggled)
 	end
 end)
 
-print("✅ Dj Hub Remastered (Tower UI Tracking Fix) Loaded")
+print("✅ Dj Hub Remastered (Tower Strict UI & Cooldown Scanner Fix) Loaded")
